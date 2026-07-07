@@ -1,0 +1,35 @@
+# Development stack: Grafana with the plugin loaded from ./dist (unsigned),
+# plus a single-node CrateDB.
+#
+# CrateDB service shape follows the E2E harness in
+# crate/cratedb-examples:application/grafana/compose.yml.
+# NOTE: CrateDB release images are amd64-only; on ARM machines run with
+#   CRATEDB_VERSION=nightly docker compose up
+services:
+  grafana:
+    image: grafana/grafana:${GRAFANA_VERSION:-latest}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./dist:/var/lib/grafana/plugins/cratedb-cratedb-datasource
+      - ./provisioning:/etc/grafana/provisioning
+    environment:
+      GF_DEFAULT_APP_MODE: development
+      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: cratedb-cratedb-datasource
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    depends_on:
+      cratedb:
+        condition: service_healthy
+
+  cratedb:
+    image: crate/crate:${CRATEDB_VERSION:-latest}
+    ports:
+      - "4200:4200"
+      - "5432:5432"
+    command: ["crate", "-Cdiscovery.type=single-node"]
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:4200"]
+      interval: 5s
+      timeout: 30s
+      retries: 60

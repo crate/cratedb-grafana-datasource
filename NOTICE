@@ -1,0 +1,29 @@
+Grafana data source plugin for CrateDB
+Copyright 2026 Crate.io
+
+This product is derived from the QuestDB Grafana datasource plugin
+(https://github.com/questdb/grafana-questdb-datasource, Apache-2.0).
+Attribution notices from that project's NOTICE file:
+
+    QuestDB Grafana datasource plugin
+
+    Original work Copyright 2022-2023 Grafana Labs & Clickhouse
+    Derived work Copyright 2024 QuestDB
+
+    This product includes software developed at
+    Grafana Labs (https://grafana.com/).
+
+    The Initial Developer of some parts of the plugin, which are copied from,
+    derived from, or inspired by Official ClickHouse data source for Grafana
+    (https://github.com/grafana/clickhouse-datasource/), is Grafana Labs
+    (https://grafana.com/).
+
+    Copyright 2022-2023 Grafana Labs.
+
+Macro and completion-provider idioms are adapted from the Amazon Redshift
+data source plugin for Grafana
+(https://github.com/grafana/redshift-datasource, Apache-2.0),
+Copyright Grafana Labs.
+
+This product includes no code from the Grafana core repository
+(https://github.com/grafana/grafana, AGPL-3.0).

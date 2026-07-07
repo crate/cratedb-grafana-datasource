@@ -1,0 +1,79 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/plugins/plugin.schema.json",
+  "type": "datasource",
+  "name": "CrateDB",
+  "id": "cratedb-cratedb-datasource",
+  "metrics": true,
+  "logs": true,
+  "backend": true,
+  "alerting": true,
+  "annotations": true,
+  "executable": "gpx_cratedb",
+  "category": "sql",
+  "queryOptions": {
+    "maxDataPoints": true,
+    "minInterval": true,
+    "cacheTimeout": true
+  },
+  "includes": [
+    {
+      "type": "dashboard",
+      "name": "CrateDB Cluster Health",
+      "path": "dashboards/cratedb-cluster-health.json"
+    },
+    {
+      "type": "dashboard",
+      "name": "CrateDB Getting Started",
+      "path": "dashboards/cratedb-getting-started.json"
+    }
+  ],
+  "info": {
+    "description": "Query and visualize CrateDB data: SQL editor with autocomplete and time-series macros, alerting, logs, template variables, ad-hoc filters, and bundled monitoring dashboards",
+    "author": {
+      "name": "Crate.io",
+      "url": "https://cratedb.com"
+    },
+    "keywords": [
+      "cratedb",
+      "datasource",
+      "sql",
+      "time series",
+      "postgresql",
+      "monitoring",
+      "analytics",
+      "iot"
+    ],
+    "logos": {
+      "small": "img/logo.svg",
+      "large": "img/logo.svg"
+    },
+    "links": [
+      {
+        "name": "Website",
+        "url": "https://cratedb.com"
+      },
+      {
+        "name": "GitHub",
+        "url": "https://github.com/crate/cratedb-grafana-datasource"
+      },
+      {
+        "name": "CrateDB documentation",
+        "url": "https://cratedb.com/docs"
+      },
+      {
+        "name": "License",
+        "url": "https://github.com/crate/cratedb-grafana-datasource/blob/main/LICENSE"
+      }
+    ],
+    "screenshots": [
+      { "name": "Cluster health dashboard (sys schema)", "path": "img/screenshots/cluster-health.png" },
+      { "name": "Getting Started dashboard: the time-series query pattern", "path": "img/screenshots/getting-started.png" }
+    ],
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+  "dependencies": {
+    "grafanaDependency": ">=12.3.0-0",
+    "plugins": []
+  }
+}

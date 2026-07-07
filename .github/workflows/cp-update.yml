@@ -1,0 +1,42 @@
+# Keep the @grafana/create-plugin managed tooling (.config/, dev deps) current.
+# Runs `create-plugin update` on a clean CI checkout and opens a PR when it
+# changes anything; review the .config/ diff and dependency bumps before merge.
+# General dependency updates are handled separately by Dependabot.
+name: Update create-plugin
+
+on:
+  schedule:
+    - cron: "0 6 1 * *" # monthly
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    name: create-plugin update
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup
+
+      - name: Run create-plugin update
+        run: npx @grafana/create-plugin@latest update
+
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "chore: update managed config from @grafana/create-plugin"
+          title: "chore: update from @grafana/create-plugin"
+          body: |
+            Automated `npx @grafana/create-plugin@latest update`.
+
+            Review the `.config/` changes and any dev-dependency bumps, then run
+            `make check` locally before merging.
+          branch: chore/create-plugin-update
+          delete-branch: true
+          labels: dependencies
