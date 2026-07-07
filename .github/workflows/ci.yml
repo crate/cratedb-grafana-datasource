@@ -1,0 +1,22 @@
+# Standard Grafana plugin CI via the reusable plugin-ci-workflows:
+# lint, typecheck, jest, go build/test, plugin bundling & validation.
+# https://github.com/grafana/plugin-ci-workflows
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  ci:
+    name: CI
+    uses: grafana/plugin-ci-workflows/.github/workflows/ci.yml@main
+    with:
+      plugin-directory: .
+      run-playwright: false

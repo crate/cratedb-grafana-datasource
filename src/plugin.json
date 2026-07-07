@@ -1,0 +1,46 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/plugins/plugin.schema.json",
+  "type": "datasource",
+  "name": "CrateDB",
+  "id": "cratedb-cratedb-datasource",
+  "metrics": true,
+  "backend": true,
+  "logs": true,
+  "alerting": true,
+  "annotations": true,
+  "executable": "gpx_cratedb",
+  "category": "sql",
+  "info": {
+    "description": "CrateDB datasource plugin for Grafana",
+    "author": {
+      "name": "Crate.io",
+      "url": "https://cratedb.com"
+    },
+    "keywords": ["cratedb", "sql", "time series", "time-series", "postgresql"],
+    "logos": {
+      "small": "img/logo.svg",
+      "large": "img/logo.svg"
+    },
+    "links": [
+      {
+        "name": "Website",
+        "url": "https://github.com/crate/cratedb-grafana-datasource"
+      },
+      {
+        "name": "CrateDB documentation",
+        "url": "https://cratedb.com/docs"
+      },
+      {
+        "name": "License",
+        "url": "https://github.com/crate/cratedb-grafana-datasource/blob/main/LICENSE"
+      }
+    ],
+    "screenshots": [],
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+  "dependencies": {
+    "grafanaDependency": ">=11.6.0",
+    "plugins": []
+  }
+}

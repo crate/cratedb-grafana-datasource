@@ -1,0 +1,51 @@
+# --- Build outputs -----------------------------------------------------------
+# Everything ships from dist/ (webpack bundle + mage-built gpx_cratedb_* binaries);
+# it is assembled by CI, never committed.
+dist/
+artifacts/
+*.zip
+
+# --- Go ----------------------------------------------------------------------
+# mage bootstrap artifact
+mage_output_file.go
+# delve debug binaries
+__debug_bin*
+# `go test -c` binaries and coverage
+*.test
+coverage.out
+# local multi-module workspace overrides
+go.work
+go.work.sum
+
+# --- JavaScript / TypeScript -------------------------------------------------
+node_modules/
+coverage/
+.eslintcache
+*.tsbuildinfo
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Yarn 4 (Berry) ----------------------------------------------------------
+# yarn.lock IS committed; only the cache/state machinery is not.
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# --- Local dev environment ---------------------------------------------------
+# docker compose overrides (GRAFANA_VERSION, CRATEDB_VERSION, secrets)
+.env
+.env.*
+docker-compose.override.yaml
+
+# --- Editors / OS ------------------------------------------------------------
+.idea/
+*.iml
+.vscode/
+.DS_Store

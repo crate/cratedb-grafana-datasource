@@ -1,0 +1,28 @@
+# Release / catalog publishing via the reusable plugin-ci-workflows.
+#
+# INTENTIONALLY INERT until the grafana.com account decisions are made:
+# - the plugin id prefix ("cratedb-") must match Crate.io's grafana.com
+#   org slug before signing;
+# - requires a GRAFANA_ACCESS_POLICY_TOKEN secret (plugin signing token)
+#   issued for that org.
+name: CD
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  cd:
+    name: CD
+    uses: grafana/plugin-ci-workflows/.github/workflows/cd.yml@main
+    with:
+      plugin-directory: .
+      # Start with draft releases; flip once the signing/org setup is done.
+      grafana-cloud-deployment-type: none
+      argo-workflow-slack-channel: ""
+    secrets: inherit
