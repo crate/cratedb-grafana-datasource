@@ -1,20 +1,42 @@
-name: Create Plugin Update
+# Keep the @grafana/create-plugin managed tooling (.config/, dev deps) current.
+# Runs `create-plugin update` on a clean CI checkout and opens a PR when it
+# changes anything; review the .config/ diff and dependency bumps before merge.
+# General dependency updates are handled separately by Dependabot.
+name: Update create-plugin
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: '0 0 1 * *' # run once a month on the 1st day
+    - cron: "0 6 1 * *" # monthly
+  workflow_dispatch:
 
-# To use this workflow please create a fine-grained personal access token for your repository with:
-# `contents: read and write`
-# `pull requests: read and write`
-# `workflows: read and write`
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
-  release:
+  update:
+    name: create-plugin update
     runs-on: ubuntu-latest
     steps:
-      - uses: grafana/plugin-actions/create-plugin-update@create-plugin-update/v2.0.1
+      - uses: actions/checkout@v4
         with:
-          # Make sure to save the token in your repository secrets as `GH_PAT_TOKEN`
-          token: ${{ secrets.GH_PAT_TOKEN }}
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup
+
+      - name: Run create-plugin update
+        run: npx @grafana/create-plugin@latest update
+
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "chore: update managed config from @grafana/create-plugin"
+          title: "chore: update from @grafana/create-plugin"
+          body: |
+            Automated `npx @grafana/create-plugin@latest update`.
+
+            Review the `.config/` changes and any dev-dependency bumps, then run
+            `make check` locally before merging.
+          branch: chore/create-plugin-update
+          delete-branch: true
+          labels: dependencies

@@ -1,0 +1,70 @@
+name: Bug report
+description: Something in the CrateDB data source plugin doesn't work as expected.
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened, and what did you expect?
+      description: >-
+        Include error messages verbatim where possible — e.g. the datasource
+        health-check message or the panel error.
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      placeholder: e.g. 0.1.0
+    validations:
+      required: true
+
+  - type: input
+    id: grafana-version
+    attributes:
+      label: Grafana version
+      placeholder: e.g. 13.1.0
+    validations:
+      required: true
+
+  - type: input
+    id: cratedb-version
+    attributes:
+      label: CrateDB version
+      description: '`SELECT version();` or the banner on port 4200.'
+      placeholder: e.g. 6.4.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: context
+    attributes:
+      label: Where does it happen?
+      options:
+        - Dashboard panel
+        - Explore
+        - Alerting
+        - Query editor / autocomplete
+        - Datasource configuration / connection
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: query
+    attributes:
+      label: Query (rawSql) and executed query
+      description: >-
+        The query as written, and — for query bugs — the expanded SQL from
+        panel menu → Inspect → Query → `executedQueryString`.
+      render: sql
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: >-
+        Relevant Grafana server log lines (the plugin logs under
+        `plugin.cratedb-cratedb-datasource`), or CrateDB log excerpts.
+      render: shell

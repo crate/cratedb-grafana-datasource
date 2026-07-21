@@ -2,7 +2,23 @@
 // generally used by snapshots, but can affect specific tests
 process.env.TZ = 'UTC';
 
+const baseConfig = require('./.config/jest.config');
+const { grafanaESModules, nodeModulesToTransform } = require('./.config/jest/utils');
+
 module.exports = {
-  // Jest configuration provided by Grafana scaffolding
-  ...require('./.config/jest.config'),
+  ...baseConfig,
+  // ESM-only packages reached through @grafana/data (marked) and
+  // @grafana/ui's date pickers (react-calendar and friends)
+  transformIgnorePatterns: [
+    nodeModulesToTransform([
+      ...grafanaESModules,
+      'lodash-es',
+      'marked',
+      'react-calendar',
+      'get-user-locale',
+      'memoize',
+      'mimic-function',
+      '@wojtekmaj/date-utils',
+    ]),
+  ],
 };

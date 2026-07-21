@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: CrateDB community forum
+    url: https://community.cratedb.com
+    about: Questions and discussions about CrateDB and its integrations.
+  - name: CrateDB documentation
+    url: https://cratedb.com/docs
+    about: CrateDB reference documentation.

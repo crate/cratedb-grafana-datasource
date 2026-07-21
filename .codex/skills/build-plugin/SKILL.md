@@ -1,6 +1,6 @@
 ---
 name: build-plugin
-description: build a Grafana plugin using the standard build process (frontend and backend if applicable)
+description: Build the CrateDB Grafana data source (Go backend + TS frontend) into dist/
 ---
 
-@../../../.config/AGENTS/skills/build-plugin.md
+@../../../docs/agents/build-plugin.md

@@ -1,39 +1,26 @@
+// Flat config built directly on @grafana/eslint-config v10, which is natively
+// flat and ships only a bare entry point. It dropped the `/flat.js` sub-path
+// that the create-plugin-managed base (.config/eslint.config.mjs) imports, so
+// that base cannot load under v10 and is intentionally not extended here.
+import grafanaConfig from '@grafana/eslint-config';
 import { defineConfig } from 'eslint/config';
-import baseConfig from './.config/eslint.config.mjs';
 
 export default defineConfig([
   {
-    ignores: [
-      '**/logs',
-      '**/*.log',
-      '**/npm-debug.log*',
-      '**/yarn-debug.log*',
-      '**/yarn-error.log*',
-      '**/.pnpm-debug.log*',
-      '**/node_modules/',
-      '.yarn/cache',
-      '.yarn/unplugged',
-      '.yarn/build-state.yml',
-      '.yarn/install-state.gz',
-      '**/.pnp.*',
-      '**/pids',
-      '**/*.pid',
-      '**/*.seed',
-      '**/*.pid.lock',
-      '**/lib-cov',
-      '**/coverage',
-      '**/dist/',
-      '**/artifacts/',
-      '**/work/',
-      '**/ci/',
-      'test-results/',
-      'playwright-report/',
-      'blob-report/',
-      'playwright/.cache/',
-      'playwright/.auth/',
-      '**/.idea',
-      '**/.eslintcache',
-    ],
+    ignores: ['**/node_modules', '**/dist', '**/coverage', '.config/**', '.yarn/**'],
   },
-  ...baseConfig,
+  ...grafanaConfig,
+  // Type-aware deprecation detection (same approach as grafana/redshift-datasource).
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-deprecated': 'error',
+    },
+  },
 ]);
