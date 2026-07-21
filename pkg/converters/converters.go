@@ -1,13 +1,13 @@
 // Package converters maps CrateDB's PostgreSQL wire types to Grafana frame
-// field types. pgx reports types via DatabaseTypeName() using pg type names
-// (INT8, TIMESTAMPTZ, JSON, _INT4 for arrays, ...); anything not listed here
-// falls through to the sqlutil defaults.
+// field types. pgx reports types via DatabaseTypeName() using pg names (INT8,
+// TIMESTAMPTZ, JSON, _INT4 for arrays); the rest fall through to sqlutil defaults.
 //
-// Converter table pattern adapted from the QuestDB Grafana plugin
-// (Apache-2.0), https://github.com/questdb/grafana-questdb-datasource — see NOTICE.
+// Converter table pattern adapted from the QuestDB Grafana plugin (Apache-2.0),
+// https://github.com/questdb/grafana-questdb-datasource; see NOTICE.
 package converters
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"time"
@@ -33,6 +33,7 @@ var (
 	nullableInt64   = reflect.PointerTo(reflect.PointerTo(reflect.TypeOf(int64(0))))
 )
 
+// CrateDB types → Grafana columns
 var typeMap = map[string]converter{
 	"BOOL": {fieldType: data.FieldTypeNullableBool, scanType: nullableBool},
 	"INT2": {fieldType: data.FieldTypeNullableInt16, scanType: nullableInt16},
@@ -41,9 +42,7 @@ var typeMap = map[string]converter{
 
 	"FLOAT4": {fieldType: data.FieldTypeNullableFloat32, scanType: nullableFloat32},
 	"FLOAT8": {fieldType: data.FieldTypeNullableFloat64, scanType: nullableFloat64},
-	// CrateDB NUMERIC has arbitrary precision; grafana frames don't, so we
-	// read it as float64. SPIKE(S3): verify pgx scans CrateDB NUMERIC into
-	// *float64 without an explicit pgtype.Numeric hop.
+	// CrateDB NUMERIC is arbitrary-precision; frames aren't, so read it as float64.
 	"NUMERIC": {fieldType: data.FieldTypeNullableFloat64, scanType: nullableFloat64},
 
 	"VARCHAR": {fieldType: data.FieldTypeNullableString, scanType: nullableString},
@@ -51,20 +50,17 @@ var typeMap = map[string]converter{
 	"NAME":    {fieldType: data.FieldTypeNullableString, scanType: nullableString},
 	"CHAR":    {fieldType: data.FieldTypeNullableString, scanType: nullableString},
 
-	// CrateDB timestamps have millisecond precision and arrive as time.Time
-	// through pgx; we only normalize to UTC.
+	// ms-precision, arrive as time.Time via pgx; we only normalize to UTC
 	"TIMESTAMP":   {convert: timestampToUTC, fieldType: data.FieldTypeNullableTime, scanType: nullableTime},
 	"TIMESTAMPTZ": {convert: timestampToUTC, fieldType: data.FieldTypeNullableTime, scanType: nullableTime},
 
-	// CrateDB OBJECT columns arrive as JSON on the wire — the headline
-	// divergence from stock PostgreSQL. v1 renders them as JSON text.
-	// SPIKE(S3): consider data.FieldTypeNullableJSON so table panels get
-	// structured rendering.
-	"JSON": {fieldType: data.FieldTypeNullableString, scanType: nullableString},
+	// CrateDB OBJECT columns arrive as JSON text on the wire (pgx scans them
+	// into a string); surfaced as a structured JSON field (a nil RawMessage carries NULL).
+	"JSON": {convert: jsonToRawMessage, fieldType: data.FieldTypeJSON, scanType: nullableString},
 
-	// Arrays (CrateDB ARRAY(...), including FLOAT_VECTOR as _FLOAT4) are
-	// read as their text representation in v1.
-	// SPIKE(S3): verify pgx's text fallback for array OIDs against CrateDB.
+	// arrays (incl. FLOAT_VECTOR, which reports as _FLOAT4) read as their pg
+	// text form, e.g. {"1","2","3"}. GEO_POINT reports as POINT, unmapped, and
+	// falls through to sqlutil's string default "(9.74,47.41)".
 	"_BOOL":    {fieldType: data.FieldTypeNullableString, scanType: nullableString},
 	"_INT2":    {fieldType: data.FieldTypeNullableString, scanType: nullableString},
 	"_INT4":    {fieldType: data.FieldTypeNullableString, scanType: nullableString},
@@ -114,6 +110,22 @@ func timestampToUTC(in interface{}) (interface{}, error) {
 		return (*time.Time)(nil), nil
 	}
 	return new((**v).UTC()), nil
+}
+
+func jsonToRawMessage(in interface{}) (interface{}, error) {
+	if in == nil {
+		return json.RawMessage(nil), nil
+	}
+	v, ok := in.(**string)
+	if !ok {
+		return nil, fmt.Errorf("invalid JSON value: %v", in)
+	}
+	if v == nil || *v == nil {
+		return json.RawMessage(nil), nil
+	}
+	// the string→[]byte conversion copies, so the RawMessage never aliases the
+	// scan buffer (sqlutil requires converters to return fresh allocations)
+	return json.RawMessage(**v), nil
 }
 
 func defaultConvert(in interface{}) (interface{}, error) {

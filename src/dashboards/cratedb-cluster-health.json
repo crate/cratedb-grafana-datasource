@@ -1,0 +1,982 @@
+{
+  "title": "CrateDB Cluster Health",
+  "uid": "cratedb-cluster-health",
+  "description": "Cluster health from CrateDB's sys schema: top-line health rollup, shards, node CPU/heap/disk/load, query throughput & latency, and CrateDB's own checks. Reads permission-scoped sys tables — connect the datasource as a user with at least DQL on schema sys (cluster DQL works); the cluster-wide job panels need a superuser or AL on cluster, otherwise they show only that user's own jobs.",
+  "tags": [
+    "cratedb",
+    "monitoring"
+  ],
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "DS_CRATEDB",
+        "label": "CrateDB datasource",
+        "type": "datasource",
+        "query": "cratedb-cratedb-datasource",
+        "current": {},
+        "hide": 0,
+        "refresh": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**Cluster health** — a live view of CrateDB's `sys` tables. Point the *CrateDB datasource* variable at your cluster. The datasource user needs at least `DQL ON SCHEMA sys` (cluster DQL works). The **Query activity** panels show cluster-wide jobs only when that user is a superuser or holds `AL ON CLUSTER` — otherwise they show just that user's own jobs. Panels with no rows (unassigned shards, failed checks) are the healthy state, not an error."
+      }
+    },
+    {
+      "id": 100,
+      "type": "row",
+      "title": "Health summary",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 3
+      },
+      "panels": []
+    },
+    {
+      "id": 10,
+      "type": "stat",
+      "title": "Cluster health",
+      "description": "Overall cluster health from sys.cluster_health. GREEN = all shards allocated and replicated; YELLOW = some shards underreplicated; RED = primary shards missing.",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT health FROM sys.cluster_health"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "GREEN": {
+                  "color": "green",
+                  "index": 0
+                },
+                "YELLOW": {
+                  "color": "yellow",
+                  "index": 1
+                },
+                "RED": {
+                  "color": "red",
+                  "index": 2
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "fixed"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Nodes",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 4,
+        "y": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT count(*) AS nodes FROM sys.nodes"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "Missing shards",
+      "description": "Primary shards with no allocated copy (from sys.cluster_health). Anything above 0 means data is currently unavailable — a RED condition.",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 7,
+        "y": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT missing_shards FROM sys.cluster_health"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "Underreplicated shards",
+      "description": "Shards missing one or more replica copies (from sys.cluster_health). Above 0 means reduced redundancy — a YELLOW condition; recovery is usually automatic.",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 10,
+        "y": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT underreplicated_shards FROM sys.cluster_health"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 14,
+      "type": "stat",
+      "title": "Pending tasks",
+      "description": "Cluster-state change tasks waiting on the master (from sys.cluster_health). A persistently high backlog points at a master under pressure.",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 14,
+        "y": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT pending_tasks FROM sys.cluster_health"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 15,
+      "type": "stat",
+      "title": "Data size",
+      "description": "On-disk size of all shards (primaries + replicas), summed from sys.shards.",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 17,
+        "y": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT sum(size) AS bytes FROM sys.shards"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 16,
+      "type": "stat",
+      "title": "Total documents",
+      "description": "Row count across all tables, counting primary shards only (replicas would double-count). From sys.shards.",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 21,
+        "y": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT sum(num_docs) AS docs FROM sys.shards WHERE primary = true"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 101,
+      "type": "row",
+      "title": "Shards",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "panels": []
+    },
+    {
+      "id": 20,
+      "type": "stat",
+      "title": "Shards started",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 0,
+        "y": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT count(*) AS started FROM sys.shards WHERE state = 'STARTED'"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 21,
+      "type": "table",
+      "title": "Shards by state",
+      "description": "Anything not STARTED deserves a look: UNASSIGNED shards mean reduced replication, RELOCATING/INITIALIZING mean recovery in progress.",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 4,
+        "y": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT state, count(*) AS shards FROM sys.shards GROUP BY state ORDER BY shards DESC"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "type": "table",
+      "title": "Unassigned shard explanations",
+      "description": "Why any currently-unassigned shard can't be placed, from sys.allocations. Empty on a healthy cluster — that's the point.",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT table_name, shard_id, \"primary\", explanation FROM sys.allocations WHERE current_state = 'UNASSIGNED' ORDER BY table_name, shard_id"
+        }
+      ]
+    },
+    {
+      "id": 102,
+      "type": "row",
+      "title": "Node resources",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "panels": []
+    },
+    {
+      "id": 30,
+      "type": "bargauge",
+      "title": "CPU used per node (%)",
+      "description": "Node CPU where the OS exposes it (sys.nodes os['cpu']['used']), falling back to the CrateDB process's CPU (process['cpu']['percent']) on hosts that don't report host-level CPU, e.g. some containers.",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 5,
+        "x": 0,
+        "y": 15
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT name, CASE WHEN os['cpu']['used'] >= 0 THEN os['cpu']['used'] ELSE process['cpu']['percent'] END AS cpu_pct FROM sys.nodes ORDER BY name"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 31,
+      "type": "bargauge",
+      "title": "Heap used per node (%)",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 5,
+        "x": 5,
+        "y": 15
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT name, heap['used'] * 100.0 / heap['max'] AS heap_pct FROM sys.nodes ORDER BY name"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 32,
+      "type": "bargauge",
+      "title": "Disk used per node (%)",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 5,
+        "x": 10,
+        "y": 15
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT name, fs['total']['used'] * 100.0 / fs['total']['size'] AS disk_pct FROM sys.nodes ORDER BY name"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 33,
+      "type": "table",
+      "title": "Load average per node",
+      "description": "OS load average over 1/5/15 minutes, from sys.nodes. Compare against the node's CPU core count.",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 9,
+        "x": 15,
+        "y": 15
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT name AS node, load['1'] AS \"1m\", load['5'] AS \"5m\", load['15'] AS \"15m\" FROM sys.nodes ORDER BY name"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "node"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^(1m|5m|15m)$/"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 34,
+      "type": "table",
+      "title": "Connections per node",
+      "description": "Open client connections per protocol (HTTP / PostgreSQL wire / transport), from sys.nodes.",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT name AS node, connections['http']['open'] AS http, connections['psql']['open'] AS psql, connections['transport']['open'] AS transport FROM sys.nodes ORDER BY name"
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "type": "table",
+      "title": "Thread pool rejections",
+      "description": "Per-node totals across all thread pools, from sys.nodes. rejected > 0 means the cluster shed work because a pool's queue was full — a saturation signal; queued is work waiting to run.",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT name AS node, array_sum(thread_pools['rejected']) AS rejected, array_sum(thread_pools['queue']) AS queued, array_sum(thread_pools['active']) AS active FROM sys.nodes ORDER BY rejected DESC, name"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "rejected"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 103,
+      "type": "row",
+      "title": "Query activity",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "panels": []
+    },
+    {
+      "id": 40,
+      "type": "timeseries",
+      "title": "Query latency (from sys.jobs_log)",
+      "description": "Average and max statement duration over time, from sys.jobs_log.",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 27
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 0,
+          "rawSql": "SELECT\n  $__timeGroupAlias(started, $__interval),\n  avg(ended::bigint - started::bigint) AS \"avg ms\",\n  max(ended::bigint - started::bigint) AS \"max ms\"\nFROM sys.jobs_log\nWHERE $__timeFilter(started)\nGROUP BY 1\nORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 41,
+      "type": "timeseries",
+      "title": "Query throughput & errors",
+      "description": "Completed statements per time bucket and how many of them failed, from sys.jobs_log. A rising error line, or a throughput cliff, flags trouble.",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 27
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 0,
+          "rawSql": "SELECT\n  $__timeGroupAlias(started, $__interval),\n  count(*) AS \"queries\",\n  count(*) FILTER (WHERE error IS NOT NULL) AS \"errors\"\nFROM sys.jobs_log\nWHERE $__timeFilter(started)\nGROUP BY 1\nORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "errors"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 42,
+      "type": "table",
+      "title": "Currently running queries",
+      "description": "In-flight statements right now, from sys.jobs (this panel's own query is filtered out). running_ms is how long each has been executing. Needs a superuser or AL on cluster to see other users' jobs.",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 36
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT\n  started,\n  now()::bigint - started::bigint AS running_ms,\n  substr(stmt, 1, 120) AS statement,\n  username,\n  node['name'] AS node\nFROM sys.jobs\nWHERE stmt NOT LIKE '%sys.jobs%'\nORDER BY started"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "running_ms"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 43,
+      "type": "table",
+      "title": "Slowest statements in range",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 36
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT\n  started,\n  ended::bigint - started::bigint AS duration_ms,\n  substr(stmt, 1, 120) AS statement,\n  username\nFROM sys.jobs_log\nWHERE $__timeFilter(started)\nORDER BY duration_ms DESC\nLIMIT 20"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "duration_ms"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 104,
+      "type": "row",
+      "title": "Cluster checks",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 45
+      },
+      "panels": []
+    },
+    {
+      "id": 50,
+      "type": "table",
+      "title": "Failed checks",
+      "description": "CrateDB's own configuration and operational checks that are currently failing, cluster-level (sys.checks) and per-node (sys.node_checks). Higher severity is more urgent. Empty means every check passes.",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 46
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT 'cluster' AS scope, severity, description FROM sys.checks WHERE NOT passed\nUNION ALL\nSELECT node_id AS scope, severity, description FROM sys.node_checks WHERE NOT passed\nORDER BY severity DESC"
+        }
+      ]
+    }
+  ]
+}

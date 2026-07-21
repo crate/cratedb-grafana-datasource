@@ -4,6 +4,7 @@
 dist/
 artifacts/
 *.zip
+*.zip.sha1
 
 # --- Go ----------------------------------------------------------------------
 # mage bootstrap artifact
@@ -37,6 +38,11 @@ yarn-error.log*
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# --- Playwright --------------------------------------------------------------
+playwright-report/
+test-results/
+playwright/.auth/
 
 # --- Local dev environment ---------------------------------------------------
 # docker compose overrides (GRAFANA_VERSION, CRATEDB_VERSION, secrets)

@@ -1,23 +1,18 @@
 package plugin
 
-// sqlds.Completable implementation: powers the /schemas, /tables and
-// /columns resource routes the query editor's autocomplete calls.
-//
-// The introspection deliberately targets information_schema rather than
-// pg_catalog: CrateDB's pg_catalog emulation is partial, while its
-// information_schema is first-class. This is also why the plugin does not
-// reuse Grafana core's parse_ident()-based postgres meta-queries.
+// sqlds.Completable: powers the /schemas, /tables and /columns autocomplete routes.
+// Targets information_schema, not pg_catalog (CrateDB's pg_catalog emulation is partial).
 
 import (
 	"context"
 	"database/sql"
 
+	"github.com/grafana/grafana-plugin-sdk-go/backend/tracing"
 	"github.com/grafana/sqlds/v5"
 )
 
 const (
-	// sys is included deliberately: CrateDB cluster-monitoring dashboards
-	// are built on sys.* tables. Only machinery schemas are hidden.
+	// sys is kept: cluster-monitoring dashboards query sys.*; only machinery schemas are hidden
 	schemasQuery = `SELECT schema_name FROM information_schema.schemata
 		WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'blob')
 		ORDER BY schema_name`
@@ -31,7 +26,7 @@ const (
 		ORDER BY ordinal_position`
 )
 
-// Schemas lists all user-visible schemas (including sys).
+// Schemas lists all user-visible schemas.
 func (d *CrateDB) Schemas(ctx context.Context, options sqlds.Options) ([]string, error) {
 	return d.queryStrings(ctx, schemasQuery)
 }
@@ -56,8 +51,14 @@ func (d *CrateDB) Columns(ctx context.Context, options sqlds.Options) ([]string,
 }
 
 func (d *CrateDB) queryStrings(ctx context.Context, query string, args ...interface{}) ([]string, error) {
+	ctx, span := tracing.DefaultTracer().Start(ctx, "cratedb.introspection")
+	defer span.End()
 	if d.db == nil {
-		return nil, ErrorNotConnected
+		return nil, ErrNotConnected
+	}
+	key := cacheKey(query, args...)
+	if cached := d.schemaCache.get(key); cached != nil {
+		return cached, nil
 	}
 	rows, err := d.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -65,7 +66,8 @@ func (d *CrateDB) queryStrings(ctx context.Context, query string, args ...interf
 	}
 	defer func() { _ = rows.Close() }()
 
-	var result []string
+	// non-nil so an empty result marshals as JSON []
+	result := []string{}
 	for rows.Next() {
 		var value sql.NullString
 		if err := rows.Scan(&value); err != nil {
@@ -75,5 +77,9 @@ func (d *CrateDB) queryStrings(ctx context.Context, query string, args ...interf
 			result = append(result, value.String)
 		}
 	}
-	return result, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	d.schemaCache.put(key, result)
+	return result, nil
 }

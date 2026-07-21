@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "CrateDB datasource plugin for Grafana",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "build": "webpack -c ./.config/webpack/webpack.config.ts --env production",
@@ -11,10 +11,11 @@
     "test": "jest --watch --onlyChanged",
     "test:ci": "jest --passWithNoTests --maxWorkers 4",
     "typecheck": "tsc --noEmit",
+    "e2e:browser": "playwright test",
     "lint": "eslint --cache .",
     "lint:fix": "yarn run lint --fix",
     "server": "docker compose up --build",
-    "sign": "npx --yes @grafana/sign-plugin@latest"
+    "sign": "npx --yes @grafana/sign-plugin@3.3.3"
   },
   "author": "Crate.io",
   "license": "Apache-2.0",
@@ -22,7 +23,9 @@
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^9.39.4",
     "@grafana/eslint-config": "^10.0.0",
+    "@grafana/plugin-e2e": "^3.9.1",
     "@grafana/tsconfig": "^2.2.0",
+    "@playwright/test": "^1.61.1",
     "@stylistic/eslint-plugin": "^5.10.0",
     "@swc/core": "^1.15.43",
     "@swc/helpers": "^0.5.23",
@@ -71,6 +74,7 @@
     "@grafana/runtime": "^13.1.0",
     "@grafana/schema": "^13.1.0",
     "@grafana/ui": "^13.1.0",
+    "pgsql-ast-parser": "^12.0.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "rxjs": "^7.8.2",

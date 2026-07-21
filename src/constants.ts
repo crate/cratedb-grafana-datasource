@@ -1,26 +1,30 @@
 import { TLSMode } from './types';
 
-/**
- * Every new query starts from this template. Aggregating by $__interval
- * server-side (DATE_BIN) keeps result sets proportional to panel pixels
- * instead of raw row counts — essential when dashboards sit on top of
- * billions of records.
- */
+// every new query starts here; grouping by $__interval server-side (DATE_BIN)
+// keeps the result size close to panel pixels, not row count
 export const DEFAULT_QUERY_TEMPLATE = `SELECT
   $__timeGroupAlias("ts", $__interval),
   count(*) AS value
-FROM "doc"."my_table"
+FROM "doc"."demo_metrics"
 WHERE $__timeFilter("ts")
 GROUP BY 1
 ORDER BY 1`;
 
+// the logs cheat-sheet example; aliases match what Grafana's logs panel
+// detects: "time" (timestamp), "body" (log line), "level" (severity coloring)
+export const LOGS_QUERY_TEMPLATE = `SELECT
+  "ts" AS time,
+  "message" AS body,
+  "level"
+FROM "doc"."demo_logs"
+WHERE $__timeFilter("ts")
+ORDER BY "ts" DESC
+LIMIT 1000`;
+
 export const DEFAULTS = {
-  port: 5432,
   username: 'crate',
   defaultSchema: 'doc',
   tlsMode: TLSMode.Disable,
-  tlsConfigurationMethod: 'file-content',
 };
 
 export const DOCS_URL = 'https://cratedb.com/docs';
-export const PLUGIN_REPO_URL = 'https://github.com/crate/cratedb-grafana-datasource';

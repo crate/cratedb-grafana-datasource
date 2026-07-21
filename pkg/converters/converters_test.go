@@ -1,6 +1,7 @@
 package converters
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -28,9 +29,10 @@ func TestConverterRegistry(t *testing.T) {
 
 	assert.Equal(t, data.FieldTypeNullableInt64, byName["INT8"])
 	assert.Equal(t, data.FieldTypeNullableTime, byName["TIMESTAMPTZ"])
-	// CrateDB OBJECT columns arrive as JSON text in v1.
-	assert.Equal(t, data.FieldTypeNullableString, byName["JSON"])
-	// FLOAT_VECTOR arrives as a float4 array.
+	// CrateDB OBJECT columns surface as structured JSON fields.
+	assert.Equal(t, data.FieldTypeJSON, byName["JSON"])
+	// FLOAT_VECTOR arrives as a float4 array: a pg array literal, not JSON,
+	// so it stays a string like every other array type.
 	assert.Equal(t, data.FieldTypeNullableString, byName["_FLOAT4"])
 }
 
@@ -61,6 +63,36 @@ func TestTimestampConverterHandlesNull(t *testing.T) {
 	out, err = convert(&null)
 	require.NoError(t, err)
 	assert.Equal(t, (*time.Time)(nil), out)
+}
+
+func TestJSONConverterReturnsRawMessage(t *testing.T) {
+	convert := converterByName(t, "JSON")
+
+	text := `{"source":"unit","n":1}`
+	ptr := &text
+	out, err := convert(&ptr)
+	require.NoError(t, err)
+	got, ok := out.(json.RawMessage)
+	require.True(t, ok)
+	require.NotNil(t, got)
+	assert.JSONEq(t, text, string(got))
+
+	// must not alias the scanned string's backing memory
+	got[0] = 'X'
+	assert.Equal(t, `{"source":"unit","n":1}`, text)
+}
+
+func TestJSONConverterHandlesNull(t *testing.T) {
+	convert := converterByName(t, "JSON")
+
+	out, err := convert(nil)
+	require.NoError(t, err)
+	assert.Equal(t, json.RawMessage(nil), out)
+
+	var null *string
+	out, err = convert(&null)
+	require.NoError(t, err)
+	assert.Equal(t, json.RawMessage(nil), out)
 }
 
 func TestDefaultConverterDereferences(t *testing.T) {

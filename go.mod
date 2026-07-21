@@ -6,8 +6,10 @@ require (
 	github.com/grafana/grafana-plugin-sdk-go v0.292.2
 	github.com/grafana/sqlds/v5 v5.2.0
 	github.com/jackc/pgx/v5 v5.10.0
+	github.com/moby/moby/api v1.54.1
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.42.0
+	go.opentelemetry.io/otel v1.44.0
 	golang.org/x/net v0.56.0
 )
 
@@ -79,7 +81,6 @@ require (
 	github.com/mithrandie/ternary v1.1.1 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/go-archive v0.2.0 // indirect
-	github.com/moby/moby/api v1.54.1 // indirect
 	github.com/moby/moby/client v0.4.0 // indirect
 	github.com/moby/patternmatcher v0.6.1 // indirect
 	github.com/moby/sys/sequential v0.6.0 // indirect
@@ -121,7 +122,6 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0 // indirect
 	go.opentelemetry.io/contrib/propagators/jaeger v1.44.0 // indirect
 	go.opentelemetry.io/contrib/samplers/jaegerremote v0.37.1 // indirect
-	go.opentelemetry.io/otel v1.44.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.44.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.44.0 // indirect
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
@@ -141,6 +141,3 @@ require (
 	gopkg.in/fsnotify/fsnotify.v1 v1.4.7 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-// go.sum is intentionally absent in this skeleton; run `go mod tidy` as the
-// first real-build step (see docs/architecture.md, spike plan).

@@ -1,28 +1,144 @@
-# Release / catalog publishing via the reusable plugin-ci-workflows.
+# Release: tag push -> verify gate (build + integration + e2e) -> signed
+# plugin zip + DRAFT GitHub release via grafana/plugin-actions/build-plugin,
+# with the release body taken from the tagged CHANGELOG section.
 #
-# INTENTIONALLY INERT until the grafana.com account decisions are made:
-# - the plugin id prefix ("cratedb-") must match Crate.io's grafana.com
-#   org slug before signing;
-# - requires a GRAFANA_ACCESS_POLICY_TOKEN secret (plugin signing token)
-#   issued for that org.
-name: CD
+# Flow: bump package.json version + CHANGELOG in a normal PR, merge, then
+#   git tag vX.Y.Z && git push --tags
+# A human reviews and publishes the draft release, then submits the zip URL
+# + sha1 to the grafana.com catalog.
+#
+# Signing: build-plugin skips signing when GRAFANA_ACCESS_POLICY_TOKEN is
+# absent (it warns and packages unsigned) — usable for beta releases today.
+# Proper signing activates once Crate.io's grafana.com org exists, the
+# plugin id prefix ("cratedb-") matches its slug, and the token is added as
+# a repository secret:
+# https://grafana.com/developers/plugin-tools/publish-a-plugin/sign-a-plugin
+# See docs/architecture.md, "Distribution & identity".
+name: Release
 
 on:
   push:
     tags:
       - "v*"
 
-permissions:
-  contents: write
-  id-token: write
+# One release at a time; never cancel a half-made release.
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  cd:
-    name: CD
-    uses: grafana/plugin-ci-workflows/.github/workflows/cd.yml@main
-    with:
-      plugin-directory: .
-      # Start with draft releases; flip once the signing/org setup is done.
-      grafana-cloud-deployment-type: none
-      argo-workflow-slack-channel: ""
-    secrets: inherit
+  verify:
+    name: Verify (build + integration + e2e)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Check tag matches package.json version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: make check-version VERSION="${TAG#v}"
+
+      - uses: ./.github/actions/setup
+
+      - name: Build plugin
+        run: make build
+
+      - name: Integration tests
+        run: make test-integration
+
+      - name: E2E tests (hermetic CrateDB + Grafana, dist/ mounted)
+        run: make e2e
+
+  browser:
+    # Pre-release, the full browser suite runs across the Grafana version
+    # matrix (unlike PRs, which run only the @critical subset on one version).
+    name: Browser tests (Grafana ${{ matrix.grafana }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        grafana: ["12.3.0", "latest"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup
+
+      - name: Build plugin
+        run: make build
+
+      - name: Start dev stack
+        env:
+          GRAFANA_VERSION: ${{ matrix.grafana }}
+        run: |
+          chmod +x dist/gpx_cratedb_* 2>/dev/null || true
+          docker compose up -d --wait
+
+      - name: Seed demo data
+        run: ./scripts/seed.sh
+
+      - name: Install Playwright browsers
+        run: yarn playwright install --with-deps chromium
+
+      - name: Run full browser suite
+        run: yarn e2e:browser
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-grafana-${{ matrix.grafana }}
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Stop dev stack
+        if: always()
+        run: docker compose down
+
+  release:
+    name: Build, sign, draft release
+    runs-on: ubuntu-latest
+    needs: [verify, browser]
+    permissions:
+      id-token: write
+      contents: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: grafana/plugin-actions/build-plugin@v1
+        with:
+          policy_token: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
+          attestation: true
+
+      # The same checks grafana.com runs on submission — malformed
+      # plugin.json, zip structure, unsigned manifest — caught here instead
+      # of during catalog review.
+      - name: Validate plugin archive
+        run: |
+          zips=(cratedb-cratedb-datasource-*.zip)
+          zipfile=${zips[0]}
+          npx --yes @grafana/plugin-validator@0.44.2 -sourceCodeUri "file://$(pwd)" "$zipfile"
+
+      # `make release-notes` prints the tagged version's CHANGELOG section
+      # (and fails if it's missing — preview locally before tagging). The
+      # fallback keeps a missing section from blocking an otherwise good
+      # release; the draft still gets a human pass before publishing.
+      - name: Set release notes from CHANGELOG
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if ! make -s release-notes VERSION="${TAG#v}" > release-notes.md; then
+            echo "See CHANGELOG.md for details." > release-notes.md
+          fi
+          gh release edit "$TAG" --notes-file release-notes.md
