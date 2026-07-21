@@ -46,15 +46,6 @@ jobs:
       - name: Unit tests (go + jest)
         run: make test
 
-      - name: Check @grafana/* API compatibility with latest Grafana
-        uses: grafana/plugin-actions/is-compatible@v1
-        with:
-          module: ./src/module.ts
-          comment-pr: "yes"
-          skip-comment-if-compatible: "yes"
-          fail-if-incompatible: "no"
-          targets: "@grafana/data,@grafana/ui,@grafana/runtime"
-
       - name: Build plugin (backend all platforms + frontend)
         run: make build
 
@@ -79,6 +70,18 @@ jobs:
           name: dist
           path: dist/
           retention-days: 1
+
+      # kept last on purpose: is-compatible runs its own actions/setup-node
+      # (Node 16) that then shadows this job's Node 22 for every later step, so
+      # any build/yarn step after it runs on the wrong Node
+      - name: Check @grafana/* API compatibility with latest Grafana
+        uses: grafana/plugin-actions/is-compatible@v1
+        with:
+          module: ./src/module.ts
+          comment-pr: "yes"
+          skip-comment-if-compatible: "yes"
+          fail-if-incompatible: "no"
+          targets: "@grafana/data,@grafana/ui,@grafana/runtime"
 
   live:
     name: Integration + e2e (CrateDB ${{ matrix.cratedb }})
