@@ -1,6 +1,6 @@
 import { expect, test } from '@grafana/plugin-e2e';
 
-test('query editor renders the SQL editor with the default query template', { tag: '@critical' }, async ({ panelEditPage, page }) => {
+test('query editor renders the SQL editor and defaults new queries to Auto format', { tag: '@critical' }, async ({ panelEditPage, page }) => {
   await panelEditPage.datasource.set('CrateDB');
 
   // The Monaco-based SQL editor lazy-loads — generously on a cold Grafana.
@@ -22,15 +22,11 @@ test('query editor renders the SQL editor with the default query template', { ta
   // Grafana applies getDefaultQuery when a query row is created for the
   // datasource. On a fresh instance the auto-created row A can predate the
   // datasource selection (sole datasource, no change event) — adding a row
-  // exercises the prefill deterministically.
+  // exercises the defaults deterministically.
   await page.getByTestId('data-testid query-tab-add-query').click();
 
-  // New queries are pre-filled with the safe time-series template.
-  await expect(page.getByText('$__timeGroupAlias').first()).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText('$__timeFilter').first()).toBeVisible();
-
-  // ...and default to the Auto format (which resolves the template to time series).
-  await expect(page.getByRole('radio', { name: 'Auto' }).last()).toBeChecked();
+  // New queries open blank and default to the Auto format.
+  await expect(page.getByRole('radio', { name: 'Auto' }).last()).toBeChecked({ timeout: 15_000 });
 });
 
 // Full query path through the deployed plugin: the provisioned Getting

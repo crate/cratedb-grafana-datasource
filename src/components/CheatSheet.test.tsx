@@ -4,7 +4,7 @@ import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { DEFAULT_QUERY_TEMPLATE, LOGS_QUERY_TEMPLATE } from '../constants';
+import { TIMESERIES_QUERY_TEMPLATE, LOGS_QUERY_TEMPLATE } from '../constants';
 import { MACROS } from '../editor/macros';
 import { QueryFormat } from '../types';
 import { CheatSheet } from './CheatSheet';
@@ -28,7 +28,7 @@ describe('CheatSheet template buttons', () => {
     await userEvent.click(screen.getByRole('button', { name: /recommended template/i }));
 
     expect(onClickExample).toHaveBeenCalledWith(
-      expect.objectContaining({ rawSql: DEFAULT_QUERY_TEMPLATE, format: QueryFormat.Timeseries })
+      expect.objectContaining({ rawSql: TIMESERIES_QUERY_TEMPLATE, format: QueryFormat.Timeseries })
     );
   });
 

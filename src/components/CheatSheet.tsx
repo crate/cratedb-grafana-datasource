@@ -2,7 +2,7 @@ import React from 'react';
 
 import { QueryEditorHelpProps } from '@grafana/data';
 
-import { DEFAULT_QUERY_TEMPLATE, LOGS_QUERY_TEMPLATE } from '../constants';
+import { TIMESERIES_QUERY_TEMPLATE, LOGS_QUERY_TEMPLATE } from '../constants';
 import { MACROS } from '../editor/macros';
 import { CrateDBQuery, QueryFormat } from '../types';
 
@@ -31,7 +31,7 @@ export function CheatSheet({ onClickExample }: QueryEditorHelpProps<CrateDBQuery
         onClick={() =>
           onClickExample({
             refId: 'A',
-            rawSql: DEFAULT_QUERY_TEMPLATE,
+            rawSql: TIMESERIES_QUERY_TEMPLATE,
             format: QueryFormat.Timeseries,
           })
         }
@@ -39,7 +39,7 @@ export function CheatSheet({ onClickExample }: QueryEditorHelpProps<CrateDBQuery
         Use the recommended template
       </button>
       <pre>
-        <code>{DEFAULT_QUERY_TEMPLATE}</code>
+        <code>{TIMESERIES_QUERY_TEMPLATE}</code>
       </pre>
 
       <h2>Macros</h2>

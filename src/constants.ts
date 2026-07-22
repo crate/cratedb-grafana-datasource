@@ -1,8 +1,8 @@
 import { TLSMode } from './types';
 
-// every new query starts here; grouping by $__interval server-side (DATE_BIN)
-// keeps the result size close to panel pixels, not row count
-export const DEFAULT_QUERY_TEMPLATE = `SELECT
+// the cheat-sheet's recommended time-series example: grouping by $__interval
+// server-side (DATE_BIN) keeps the result size close to panel pixels, not row count
+export const TIMESERIES_QUERY_TEMPLATE = `SELECT
   $__timeGroupAlias("ts", $__interval),
   count(*) AS value
 FROM "doc"."demo_metrics"

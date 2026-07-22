@@ -1,10 +1,10 @@
-import { DEFAULT_QUERY_TEMPLATE } from '../constants';
+import { TIMESERIES_QUERY_TEMPLATE } from '../constants';
 import { QueryFormat } from '../types';
 import { detectFormat } from './formatDetection';
 
 describe('detectFormat', () => {
-  it('detects the default template as a time series (macro alias)', () => {
-    expect(detectFormat(DEFAULT_QUERY_TEMPLATE)).toBe(QueryFormat.Timeseries);
+  it('detects the recommended time-series template as a time series (macro alias)', () => {
+    expect(detectFormat(TIMESERIES_QUERY_TEMPLATE)).toBe(QueryFormat.Timeseries);
   });
 
   it.each([

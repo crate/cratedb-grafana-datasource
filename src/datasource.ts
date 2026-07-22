@@ -14,11 +14,10 @@ import {
 import { DataSourceWithBackend, getTemplateSrv } from '@grafana/runtime';
 
 import { InFlightCache } from './data/cache';
-import { DEFAULT_QUERY_TEMPLATE, DEFAULTS } from './constants';
+import { DEFAULTS } from './constants';
 import { AdHocFilter } from './data/adHocFilter';
 import { applyConditionalAll } from './data/conditionalAll';
 import { escapeColumnRef, escapeIdentifier } from './data/escape';
-import { detectFormat } from './data/formatDetection';
 import { interpolateVariable } from './data/interpolate';
 import { attachTimeBoundNotices } from './data/queryHints';
 import { CrateDBOptions, CrateDBQuery, QueryFormat } from './types';
@@ -73,12 +72,13 @@ export class CrateDBDatasource extends DataSourceWithBackend<CrateDBQuery, Crate
     }
   }
 
-  // new panels start from the aggregation template, not an empty editor
+  // new panels open on a blank editor; the cheat-sheet offers the recommended
+  // time-series template and autocomplete steers toward real tables
   getDefaultQuery(_: CoreApp): Partial<CrateDBQuery> {
     return {
-      rawSql: DEFAULT_QUERY_TEMPLATE,
+      rawSql: '',
       selectedFormat: QueryFormat.Auto,
-      format: detectFormat(DEFAULT_QUERY_TEMPLATE),
+      format: QueryFormat.Table,
     };
   }
 
