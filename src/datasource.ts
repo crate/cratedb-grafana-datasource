@@ -20,7 +20,8 @@ import { applyConditionalAll } from './data/conditionalAll';
 import { escapeColumnRef, escapeIdentifier } from './data/escape';
 import { interpolateVariable } from './data/interpolate';
 import { attachTimeBoundNotices } from './data/queryHints';
-import { CrateDBOptions, CrateDBQuery, QueryFormat } from './types';
+import { defaultBuilderOptions } from './data/sqlGenerator';
+import { ColumnMeta, CrateDBOptions, CrateDBQuery, EditorType, QueryFormat } from './types';
 import { CrateDBVariableSupport } from './variables';
 
 // cap for the DISTINCT scan behind ad-hoc value dropdowns
@@ -57,6 +58,7 @@ export class CrateDBDatasource extends DataSourceWithBackend<CrateDBQuery, Crate
   adHocFilter: AdHocFilter;
   // coalesce concurrent autocomplete/ad-hoc dropdown bursts into one request
   private completionCache = new InFlightCache<string[]>();
+  private columnMetaCache = new InFlightCache<ColumnMeta[]>();
   private tagCache = new InFlightCache<MetricFindValue[]>();
 
   constructor(instanceSettings: DataSourceInstanceSettings<CrateDBOptions>) {
@@ -72,13 +74,15 @@ export class CrateDBDatasource extends DataSourceWithBackend<CrateDBQuery, Crate
     }
   }
 
-  // new panels open on a blank editor; the cheat-sheet offers the recommended
-  // time-series template and autocomplete steers toward real tables
+  // new panels open in the visual builder, seeded with the recommended
+  // count(*)-per-interval aggregation; nothing runs until a table is picked
+  // (blank rawSql is skipped by filterQuery)
   getDefaultQuery(_: CoreApp): Partial<CrateDBQuery> {
     return {
       rawSql: '',
-      selectedFormat: QueryFormat.Auto,
-      format: QueryFormat.Table,
+      format: QueryFormat.Timeseries,
+      editorType: EditorType.Builder,
+      builderOptions: defaultBuilderOptions(this.defaultSchema),
     };
   }
 
@@ -117,6 +121,14 @@ export class CrateDBDatasource extends DataSourceWithBackend<CrateDBQuery, Crate
   fetchColumns(schema: string, table: string): Promise<string[]> {
     return this.completionCache.get(`columns:${schema}.${table}`, () =>
       this.postResource<string[]>('columns', { schema, table })
+    );
+  }
+
+  // columns with their CrateDB data types, for the query builder's pickers and
+  // typed filter value editors
+  fetchColumnMeta(schema: string, table: string): Promise<ColumnMeta[]> {
+    return this.columnMetaCache.get(`${schema}.${table}`, () =>
+      this.postResource<ColumnMeta[]>('column-meta', { schema, table })
     );
   }
 

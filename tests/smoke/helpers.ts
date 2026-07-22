@@ -18,6 +18,16 @@ export async function waitForMonaco(page: Page) {
     .toBeGreaterThan(300);
 }
 
+// Bring the last query row to the SQL surface — new queries open in the visual
+// builder — and wait for Monaco. A row already in SQL mode is left alone.
+export async function openSqlEditor(page: Page) {
+  const sqlRadio = page.getByRole('radio', { name: 'SQL' }).last();
+  if (!(await sqlRadio.isChecked())) {
+    await sqlRadio.click();
+  }
+  await waitForMonaco(page);
+}
+
 // Replace the editor contents with `sql`, leaving the cursor at the end.
 export async function setEditorSql(page: Page, sql: string) {
   const lines = page.locator('.monaco-editor .view-lines').first();

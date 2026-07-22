@@ -10,7 +10,116 @@ export enum QueryFormat {
   Logs = 2,
 }
 
-export interface CrateDBQuery extends DataQuery {
+// how a target is edited: raw SQL in Monaco, or the visual builder. Unset means
+// SQL — targets saved before the builder existed carry no editorType.
+export enum EditorType {
+  SQL = 'sql',
+  Builder = 'builder',
+}
+
+// ---- visual-builder query model -------------------------------------------
+// adapted from the ClickHouse datasource (Apache-2.0),
+// https://github.com/grafana/clickhouse-datasource; see NOTICE
+
+export enum BuilderMode {
+  Simple = 'simple',
+  Aggregate = 'aggregate',
+}
+
+// semantic column roles; the generator aliases hinted columns to the names
+// Grafana's panels expect (time / body / level)
+export enum ColumnHint {
+  Time = 'time',
+  LogMessage = 'log_message',
+  LogLevel = 'log_level',
+}
+
+export interface SelectedColumn {
+  column: string;
+  alias?: string;
+  hint?: ColumnHint;
+}
+
+export enum AggregateType {
+  Count = 'count',
+  CountDistinct = 'count_distinct',
+  Sum = 'sum',
+  Avg = 'avg',
+  Min = 'min',
+  Max = 'max',
+}
+
+export interface AggregateColumn {
+  aggregateType: AggregateType;
+  /** '*' stands for count(*) */
+  column: string;
+  alias?: string;
+}
+
+export enum FilterOperator {
+  Equals = '=',
+  NotEquals = '!=',
+  LessThan = '<',
+  LessThanOrEqual = '<=',
+  GreaterThan = '>',
+  GreaterThanOrEqual = '>=',
+  Like = 'LIKE',
+  NotLike = 'NOT LIKE',
+  ILike = 'ILIKE',
+  NotILike = 'NOT ILIKE',
+  In = 'IN',
+  NotIn = 'NOT IN',
+  IsNull = 'IS NULL',
+  IsNotNull = 'IS NOT NULL',
+  /** emits $__timeFilter(column) */
+  WithinTimeRange = 'WITHIN DASHBOARD TIME RANGE',
+}
+
+// value-editor category a CrateDB data type maps onto; 'other' (OBJECT, geo,
+// arrays) is excluded from filter and aggregate pickers
+export type ColumnKind = 'time' | 'number' | 'string' | 'boolean' | 'other';
+
+/** column name + CrateDB data type, as served by the column-meta resource */
+export interface ColumnMeta {
+  name: string;
+  type: string;
+}
+
+export interface Filter {
+  column: string;
+  operator: FilterOperator;
+  /** string[] for In/NotIn; unset for the valueless operators */
+  value?: string | string[];
+  /** joiner with the preceding filter; ignored on the first filter */
+  condition: 'AND' | 'OR';
+  /** drives the value editor; derived from column metadata */
+  type?: ColumnKind;
+}
+
+export interface OrderBy {
+  column: string;
+  dir: 'ASC' | 'DESC';
+}
+
+export interface BuilderOptions {
+  schema: string;
+  table: string;
+  /** maps 1:1 onto the format the backend consumes */
+  flavor: Exclude<QueryFormat, QueryFormat.Auto>;
+  /** Table and Timeseries flavors only; Logs ignores it */
+  mode: BuilderMode;
+  /** hinted time/body/level columns live here alongside plain selections */
+  columns: SelectedColumn[];
+  aggregates: AggregateColumn[];
+  groupBy: string[];
+  filters: Filter[];
+  orderBy: OrderBy[];
+  limit?: number;
+}
+
+// ---------------------------------------------------------------------------
+
+interface CrateDBQueryBase extends DataQuery {
   rawSql: string;
   /** the resolved format the backend consumes */
   format: Exclude<QueryFormat, QueryFormat.Auto>;
@@ -20,6 +129,21 @@ export interface CrateDBQuery extends DataQuery {
    */
   selectedFormat?: QueryFormat;
 }
+
+export interface CrateDBSqlQuery extends CrateDBQueryBase {
+  editorType?: EditorType.SQL;
+  /** builder state stashed on switch to SQL, restored on switch back */
+  meta?: { builderOptions?: BuilderOptions };
+}
+
+export interface CrateDBBuilderQuery extends CrateDBQueryBase {
+  editorType: EditorType.Builder;
+  builderOptions: BuilderOptions;
+}
+
+// the backend only ever consumes rawSql + format; builderOptions is frontend state
+// from which rawSql is regenerated on every builder edit
+export type CrateDBQuery = CrateDBSqlQuery | CrateDBBuilderQuery;
 
 // dashboard Query-variable model; variable queries always run as tables, so no format field
 export interface CrateDBVariableQuery extends DataQuery {

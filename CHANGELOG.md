@@ -13,9 +13,17 @@ Initial release.
   `$__timeFrom`/`$__timeTo`, `$__fromTime`/`$__toTime`, `$__timeGroup(Alias)`
   (DATE_BIN-based), `$__unixEpochFilter`/`Group(Alias)`, `$__interval_s`, and
   `$__conditionalAll`. Most resolve backend-side, so alerting works identically.
+- **Visual query builder**: new queries open in a builder with Table, Time series, and Logs
+  flavors — schema/table pickers backed by `information_schema`, typed filter rows, aggregations
+  with grouping, order/limit. Picking a table is enough to produce the recommended
+  `$__timeGroupAlias`/`$__timeFilter` aggregation: the time column (and, for logs, the
+  message/level columns) is guessed from column metadata. Builder ⇄ SQL switching is two-way:
+  the builder state rides along the query, and hand-written SQL is parsed back into builder
+  state when it fits the builder's model — anything it can't represent asks before being
+  replaced.
 - **Query editor**: SQL editor with schema/table/column autocomplete (CrateDB
   `information_schema`, including `sys`), macro completion, hover docs on macros, a cheat
-  sheet, Ctrl/Cmd+Enter to run, and a cluster-friendly default query template. The result
+  sheet, and Ctrl/Cmd+Enter to run. The result
   format defaults to *Auto*, which infers time series vs. table from the query shape and
   shows what it resolved to; explicit overrides remain available. A `$__timeGroup(...)`
   used as a bare projection is shorthand for the aliased form, and `EXPLAIN` queries

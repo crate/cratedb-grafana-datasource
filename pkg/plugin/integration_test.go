@@ -129,3 +129,37 @@ func TestIntegrationAdHocKeys(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, keys, fallback)
 }
+
+func TestIntegrationColumnMeta(t *testing.T) {
+	_, jsonData := startCrateDB(t)
+	ctx := context.Background()
+
+	driver := &CrateDB{}
+	db, err := driver.Connect(ctx, backend.DataSourceInstanceSettings{
+		JSONData: []byte(jsonData),
+	}, nil)
+	require.NoError(t, err)
+	defer func() { _ = db.Close() }()
+
+	_, err = db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS doc.meta_types (
+		ts TIMESTAMPTZ,
+		location TEXT,
+		reading DOUBLE PRECISION,
+		tags OBJECT AS (source TEXT)
+	)`)
+	require.NoError(t, err)
+
+	meta, err := driver.ColumnMeta(ctx, "doc", "meta_types")
+	require.NoError(t, err)
+
+	assert.Contains(t, meta, columnMeta{Name: "ts", Type: "timestamp with time zone"})
+	assert.Contains(t, meta, columnMeta{Name: "location", Type: "text"})
+	assert.Contains(t, meta, columnMeta{Name: "reading", Type: "double precision"})
+	// OBJECT sub-columns surface with their primitive types
+	assert.Contains(t, meta, columnMeta{Name: "tags['source']", Type: "text"})
+
+	// empty schema falls back to the datasource default
+	fallback, err := driver.ColumnMeta(ctx, "", "meta_types")
+	require.NoError(t, err)
+	assert.Equal(t, meta, fallback)
+}

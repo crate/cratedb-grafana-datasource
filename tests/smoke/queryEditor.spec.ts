@@ -1,23 +1,9 @@
 import { expect, test } from '@grafana/plugin-e2e';
 
-test('query editor renders the SQL editor and defaults new queries to Auto format', { tag: '@critical' }, async ({ panelEditPage, page }) => {
+import { waitForMonaco } from './helpers';
+
+test('new queries open in the builder; the SQL editor is one switch away', { tag: '@critical' }, async ({ panelEditPage, page }) => {
   await panelEditPage.datasource.set('CrateDB');
-
-  // The Monaco-based SQL editor lazy-loads — generously on a cold Grafana.
-  await page.waitForFunction(() => (window as any).monaco, { timeout: 30_000 });
-
-  // EditorRow is a flex row, so the Monaco editor collapses to a ~5px sliver
-  // unless its wrapper stretches and it is laid out. Assert it fills real width.
-  // Measure the widest .monaco-editor to skip Monaco's hidden 0px rename widget.
-  await expect
-    .poll(
-      () =>
-        page.evaluate(() =>
-          Math.max(0, ...Array.from(document.querySelectorAll('.monaco-editor')).map((el) => el.clientWidth))
-        ),
-      { timeout: 15_000 }
-    )
-    .toBeGreaterThan(300);
 
   // Grafana applies getDefaultQuery when a query row is created for the
   // datasource. On a fresh instance the auto-created row A can predate the
@@ -25,8 +11,15 @@ test('query editor renders the SQL editor and defaults new queries to Auto forma
   // exercises the defaults deterministically.
   await page.getByTestId('data-testid query-tab-add-query').click();
 
-  // New queries open blank and default to the Auto format.
-  await expect(page.getByRole('radio', { name: 'Auto' }).last()).toBeChecked({ timeout: 15_000 });
+  // New queries open in the visual builder, not yet runnable (no table picked).
+  await expect(page.getByRole('radio', { name: 'Builder' }).last()).toBeChecked({ timeout: 15_000 });
+  await expect(page.getByTestId('sql-preview').last()).toBeVisible();
+
+  // Switching to SQL hands over to Monaco, which must lazy-load and lay out
+  // with real width (EditorRow is a flex row, so the editor collapses to a
+  // ~5px sliver unless its wrapper stretches).
+  await page.getByRole('radio', { name: 'SQL' }).last().click();
+  await waitForMonaco(page);
 });
 
 // Full query path through the deployed plugin: the provisioned Getting

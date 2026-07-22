@@ -31,12 +31,14 @@ variables.
 
 3. Open the bundled **CrateDB Cluster Health** dashboard (provisioned with the plugin) for a
    view of nodes, heap, disk, shards, and query latency (no separate exporter), or start a
-   panel of your own. Every new query begins from a cluster-friendly template:
+   panel of your own. New queries open in a **visual query builder**: pick a table and the
+   plugin completes the recommended time-series aggregation (the time column is guessed from
+   the table's metadata), generating
 
    ```sql
    SELECT
      $__timeGroupAlias("ts", $__interval),
-     count(*) AS value
+     count(*) AS "value"
    FROM "doc"."demo_metrics"
    WHERE $__timeFilter("ts")
    GROUP BY 1
@@ -47,13 +49,19 @@ variables.
    than row count, which matters when panels sit over large tables. The **CrateDB Getting
    Started** dashboard is an example of this pattern, including multi-select variables.
 
-   The query format defaults to **Auto**: the result renders as a time series when the first
+   Switch the editor to **SQL** any time to edit the generated query by hand — and back again:
+   the builder state travels with the query, and hand-written SQL that fits the builder's model
+   converts into builder state.
+
+   In the builder, the result format follows the chosen flavor (*Table*, *Time series*, *Logs*).
+   In the SQL editor it defaults to **Auto**: the result renders as a time series when the first
    selected column is aliased `time` (or uses `$__timeGroupAlias`) and more columns follow, and
    as a table otherwise. Pick *Time series*, *Table*, or *Logs* explicitly to override.
 
-4. To browse log tables (e.g. in Explore), switch the query format to **Logs** and alias
-   columns to the names Grafana's logs panel detects — the timestamp as `time`, the log line
-   as `body`, and optionally a severity string as `level`:
+4. To browse log tables (e.g. in Explore), pick the builder's **Logs** flavor — time, message,
+   and severity column pickers — or, in the SQL editor, switch the query format to **Logs** and
+   alias columns to the names Grafana's logs panel detects — the timestamp as `time`, the log
+   line as `body`, and optionally a severity string as `level`:
 
    ```sql
    SELECT "ts" AS time, "message" AS body, "level"
@@ -77,8 +85,8 @@ CrateDB, this plugin does what the Postgres data source can't:
 2. **CrateDB-native time-series SQL.** `$__timeGroup` expands to CrateDB's `DATE_BIN` and time
    filters to millisecond-precision literals — CrateDB's own idioms rather than the PostgreSQL
    expressions the generic adapter emits — and macros resolve on the backend, so they hold up in
-   alerting. A cluster-friendly starter template (above), an in-editor macro cheat sheet, and
-   bundled example dashboards come with it.
+   alerting. A visual query builder that starts from this pattern (above), an in-editor macro
+   cheat sheet, and bundled example dashboards come with it.
 3. **CrateDB container types, modeled.** `OBJECT` columns render as structured, expandable JSON,
    and arrays, `GEO`, and `FLOAT_VECTOR` get defined handling — CrateDB types the Postgres data
    source has no converter for.

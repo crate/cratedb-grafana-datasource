@@ -39,9 +39,11 @@ func newDatasource(ctx context.Context, settings backend.DataSourceInstanceSetti
 	ds := sqlds.NewDatasource(driver)
 	// wiring Completable enables the autocomplete resource routes
 	ds.Completable = driver
-	// type-aware ad-hoc filter keys (see pkg/plugin/adhoc.go)
+	// type-aware ad-hoc filter keys (adhoc.go) and typed columns for the query
+	// builder (columnmeta.go)
 	ds.CustomRoutes = map[string]func(http.ResponseWriter, *http.Request){
-		"/adhoc-keys": driver.HandleAdHocKeys,
+		"/adhoc-keys":  driver.HandleAdHocKeys,
+		"/column-meta": driver.HandleColumnMeta,
 	}
 	// classified connect+ping, so config-page failures are actionable
 	ds.PreCheckHealth = driver.PreCheckHealth

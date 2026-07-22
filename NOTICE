@@ -20,6 +20,13 @@ Attribution notices from that project's NOTICE file:
 
     Copyright 2022-2023 Grafana Labs.
 
+The visual query builder — the query model, SQL generation and heuristics
+(src/data/sqlGenerator.ts, src/data/columnHeuristics.ts) and the editor
+components under src/components/queryBuilder/ — is adapted directly from the
+Official ClickHouse data source for Grafana
+(https://github.com/grafana/clickhouse-datasource, Apache-2.0),
+Copyright Grafana Labs.
+
 Macro and completion-provider idioms are adapted from the Amazon Redshift
 data source plugin for Grafana
 (https://github.com/grafana/redshift-datasource, Apache-2.0),

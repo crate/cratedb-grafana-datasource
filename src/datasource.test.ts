@@ -1,7 +1,15 @@
-import { AdHocVariableFilter, DataQueryRequest, DataSourceInstanceSettings, TimeRange } from '@grafana/data';
+import { AdHocVariableFilter, CoreApp, DataQueryRequest, DataSourceInstanceSettings, TimeRange } from '@grafana/data';
 import { lastValueFrom, of } from 'rxjs';
 
-import { CrateDBOptions, CrateDBQuery, CrateDBVariableQuery, QueryFormat } from './types';
+import {
+  AggregateType,
+  CrateDBBuilderQuery,
+  CrateDBOptions,
+  CrateDBQuery,
+  CrateDBVariableQuery,
+  EditorType,
+  QueryFormat,
+} from './types';
 
 // Stub the runtime: a no-op backend base class, and a template service whose
 // replace() expands $__interval into a bare duration literal ("20m") the way
@@ -331,5 +339,50 @@ describe('CrateDBDatasource.filterQuery', () => {
 
     expect(ds.filterQuery({ refId: 'A', rawSql: 'SELECT 1', format: QueryFormat.Table })).toBe(true);
     expect(ds.filterQuery({ refId: 'A', rawSql: '', format: QueryFormat.Table })).toBe(false);
+  });
+});
+
+describe('CrateDBDatasource.getDefaultQuery', () => {
+  it('opens new panels in the builder, seeded but not yet runnable', () => {
+    const ds = makeDatasource();
+
+    const query = ds.getDefaultQuery(CoreApp.PanelEditor) as Partial<CrateDBBuilderQuery>;
+
+    expect(query.editorType).toBe(EditorType.Builder);
+    // blank SQL keeps filterQuery from firing until a table is picked
+    expect(query.rawSql).toBe('');
+    expect(query.format).toBe(QueryFormat.Timeseries);
+    expect(query.builderOptions?.schema).toBe('doc');
+    expect(query.builderOptions?.table).toBe('');
+    expect(query.builderOptions?.aggregates).toEqual([
+      { aggregateType: AggregateType.Count, column: '*', alias: 'value' },
+    ]);
+  });
+});
+
+describe('CrateDBDatasource.fetchColumnMeta', () => {
+  it('maps the column-meta route result', async () => {
+    const ds = makeDatasource();
+    const post = jest.fn().mockResolvedValue([{ name: 'ts', type: 'timestamp with time zone' }]);
+    (ds as unknown as { postResource: jest.Mock }).postResource = post;
+
+    const meta = await ds.fetchColumnMeta('doc', 'demo_metrics');
+
+    expect(post).toHaveBeenCalledWith('column-meta', { schema: 'doc', table: 'demo_metrics' });
+    expect(meta).toEqual([{ name: 'ts', type: 'timestamp with time zone' }]);
+  });
+
+  it('coalesces concurrent lookups per table', async () => {
+    const ds = makeDatasource();
+    const post = jest.fn().mockResolvedValue([]);
+    (ds as unknown as { postResource: jest.Mock }).postResource = post;
+
+    await Promise.all([
+      ds.fetchColumnMeta('doc', 'demo_metrics'),
+      ds.fetchColumnMeta('doc', 'demo_metrics'),
+      ds.fetchColumnMeta('doc', 'demo_logs'),
+    ]);
+
+    expect(post).toHaveBeenCalledTimes(2);
   });
 });

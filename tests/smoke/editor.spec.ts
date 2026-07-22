@@ -1,13 +1,13 @@
 import { expect, test } from '@grafana/plugin-e2e';
 
-import { openSuggestions, setEditorSql, waitForMonaco } from './helpers';
+import { openSqlEditor, openSuggestions, setEditorSql } from './helpers';
 
 // Real-Monaco behaviours the jsdom unit tests can't reach: live autocomplete
 // against the cluster (schemas/tables/OBJECT sub-columns) and the cheat sheet.
 
 test('autocomplete lists the sys monitoring schema tables', { tag: '@critical' }, async ({ panelEditPage, page }) => {
   await panelEditPage.datasource.set('CrateDB');
-  await waitForMonaco(page);
+  await openSqlEditor(page);
 
   await setEditorSql(page, 'SELECT * FROM sys.');
 
@@ -19,7 +19,7 @@ test('autocomplete lists the sys monitoring schema tables', { tag: '@critical' }
 
 test('autocomplete offers OBJECT sub-columns as their own keys', async ({ panelEditPage, page }) => {
   await panelEditPage.datasource.set('CrateDB');
-  await waitForMonaco(page);
+  await openSqlEditor(page);
 
   await setEditorSql(page, 'SELECT * FROM doc.demo_metrics WHERE ta');
 
@@ -31,7 +31,7 @@ test('autocomplete offers OBJECT sub-columns as their own keys', async ({ panelE
 
 test('the cheat sheet loads the recommended template into the editor', async ({ panelEditPage, page }) => {
   await panelEditPage.datasource.set('CrateDB');
-  await waitForMonaco(page);
+  await openSqlEditor(page);
   await setEditorSql(page, 'SELECT 1');
 
   await page.getByTestId('data-testid Show data source help').click();
