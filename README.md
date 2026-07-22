@@ -63,24 +63,39 @@ variables.
    LIMIT 1000
    ```
 
-## Why a dedicated plugin?
+## Why this plugin and not just the postgres datasource?
 
-CrateDB works with Grafana's built-in PostgreSQL data source today. This plugin adds what a
-generic adapter can't:
+CrateDB works with Grafana's built-in PostgreSQL data source today, but that generic adapter
+drives itself from `pg_catalog` and PostgreSQL idioms CrateDB only partly shares. Pointed at
+CrateDB, this plugin does what the Postgres data source can't:
 
-1. A discoverable CrateDB entry in the Grafana plugin catalog.
-2. Query guidance toward cluster-friendly time-series SQL (the template above, a macro cheat
-   sheet in the editor, and bundled example dashboards).
-3. Autocomplete tuned to CrateDB's `information_schema` (including the `sys` schema for
-   cluster monitoring), with a TTL cache so completion popups don't hammer the cluster.
-4. CrateDB-aware type mapping (`OBJECT` columns render as structured, expandable JSON,
-   arrays as their PostgreSQL text form, e.g. `{1,2,3}`) and
-   actionable connection errors (auth vs. network vs. TLS) on the config page.
+1. **Introspection that works on CrateDB.** Autocomplete and schema browsing read
+   `information_schema`, not the `pg_catalog` the Postgres data source relies on (and which
+   CrateDB only partially emulates) — dependable schema/table/column completion, the `sys`
+   schema for cluster monitoring, and a TTL cache so completion popups don't hammer the cluster.
+   It imposes no CrateDB `parse_ident()` / `>= 6.3` floor (see Requirements).
+2. **CrateDB-native time-series SQL.** `$__timeGroup` expands to CrateDB's `DATE_BIN` and time
+   filters to millisecond-precision literals — CrateDB's own idioms rather than the PostgreSQL
+   expressions the generic adapter emits — and macros resolve on the backend, so they hold up in
+   alerting. A cluster-friendly starter template (above), an in-editor macro cheat sheet, and
+   bundled example dashboards come with it.
+3. **CrateDB container types, modeled.** `OBJECT` columns render as structured, expandable JSON,
+   and arrays, `GEO`, and `FLOAT_VECTOR` get defined handling — CrateDB types the Postgres data
+   source has no converter for.
+4. **Ad-hoc filters that only offer usable keys.** Filter keys come from `information_schema` and
+   skip columns that can't form a CrateDB equality predicate (`OBJECT`, `GEO`, arrays) while
+   keeping `OBJECT` sub-columns — where the generic adapter would surface keys that produce
+   invalid filters.
+5. **CrateDB-specific connection diagnostics.** Auth, TLS, network, and timeout failures come
+   back with concrete fixes, and the config page warns when you point it at CrateDB's HTTP port
+   (4200) instead of the PostgreSQL wire port (5432) — the most common connection mistake —
+   rather than a raw driver error.
 
 ## Requirements
 
-- Grafana >= 12.3 (the frontend uses the `externalize-jsx-runtime` build so it runs on Grafana
-  13's React 19; that build migration needs a 12.3+ floor)
+- Grafana >= 12.3 — the frontend externalizes `react/jsx-runtime` to use the host's React (18 on
+  12.x, 19 on 13.x) rather than bundling its own; 12.3 is the first Grafana version that provides
+  that shared external.
 - CrateDB: no hard version floor. This plugin introspects `information_schema` directly and
   speaks the PostgreSQL wire protocol, so it does not depend on `parse_ident()`. (The `>= 6.3`
   floor only applies if you instead use Grafana's built-in PostgreSQL datasource, whose query
@@ -138,7 +153,7 @@ variable type. A dashboard-JSON variable of `"type": "adhoc"` works on every ver
 ```bash
 make install   # yarn install + go mod download
 make build     # backend binaries (all platforms) + frontend bundle → dist/
-make check     # lint (gofmt, go vet, eslint, tsc, actionlint) + unit tests
+make check     # lint (gofmt, go vet, golangci-lint, actionlint, eslint, tsc) + unit tests
 make up        # dev stack: Grafana (:3000, anonymous admin) + CrateDB (:4200 HTTP, :5432 pg)
 make seed      # demo tables (metrics, logs, events) for the Getting Started dashboard
 ```
@@ -162,9 +177,10 @@ resolved via a pinned `npx` fallback when no local yarn 4 exists, and `mage` fal
 `go run` when not installed. Grafana ≥13 restricts anonymous auth to Viewer, so the admin
 APIs (and the e2e test) use `admin:admin`.
 
-CI (GitHub Actions) runs the same targets on every PR — lint, unit tests, build, and all
-three live tiers across CrateDB/Grafana version matrices — and uploads an installable plugin
-zip per run. The verification tiers are described in
+CI (GitHub Actions) runs on every PR: lint, unit tests, build, integration and e2e across the
+CrateDB version matrix, and a `@critical` browser smoke on current Grafana — uploading an
+installable plugin zip per run. The full Grafana version matrix and browser suite run on a
+monthly cron. The verification tiers are described in
 [docs/architecture.md](https://github.com/crate/cratedb-grafana-datasource/blob/main/docs/architecture.md#9-verification),
 the release flow in
 [RELEASE.md](https://github.com/crate/cratedb-grafana-datasource/blob/main/RELEASE.md).
@@ -181,6 +197,6 @@ for etiquette (CLA, PR conventions); everything technical is in [Development](#d
 
 ## License
 
-Apache-2.0. Adapted from the [QuestDB Grafana plugin](https://github.com/questdb/grafana-questdb-datasource)
-(itself derived from the ClickHouse plugin by Grafana Labs & ClickHouse). Contains no code from
-the Grafana core repository (AGPL-3.0). See `LICENSE` and `NOTICE`.
+Apache-2.0. Inspired from the [QuestDB Grafana plugin](https://github.com/questdb/grafana-questdb-datasource)
+(itself derived from the ClickHouse plugin by Grafana Labs & ClickHouse).
+See `LICENSE` and `NOTICE`.

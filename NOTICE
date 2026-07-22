@@ -1,5 +1,5 @@
 Grafana data source plugin for CrateDB
-Copyright 2026 Crate.io
+Copyright 2013-2026 Crate.IO GmbH ("Crate")
 
 This product is derived from the QuestDB Grafana datasource plugin
 (https://github.com/questdb/grafana-questdb-datasource, Apache-2.0).
