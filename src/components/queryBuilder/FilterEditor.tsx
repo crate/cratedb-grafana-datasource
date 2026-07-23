@@ -74,7 +74,7 @@ function ValueEditor({
 }: {
   filter: Filter;
   kind: ColumnKind | undefined;
-  onCommit: (value: string | string[]) => void;
+  onCommit: (value: string | string[], run?: boolean) => void;
 }) {
   if (valueless(filter.operator)) {
     return null;
@@ -98,16 +98,19 @@ function ValueEditor({
       <Combobox options={BOOLEAN_VALUES} value={value ?? null} onChange={(v) => onCommit(v.value)} width={12} />
     );
   }
+  // controlled so a middle-row delete can't leave stale text on a shifted row;
+  // typing updates state without running, blur/Enter runs
   const value = Array.isArray(filter.value) ? '' : (filter.value ?? '');
   return (
     <Input
-      defaultValue={value}
+      value={value}
       placeholder="Value"
       width={25}
-      onBlur={(event) => onCommit(event.currentTarget.value)}
+      onChange={(event) => onCommit(event.currentTarget.value, false)}
+      onBlur={(event) => onCommit(event.currentTarget.value, true)}
       onKeyDown={(event) => {
         if (event.key === 'Enter') {
-          onCommit(event.currentTarget.value);
+          onCommit(event.currentTarget.value, true);
         }
       }}
     />
@@ -159,7 +162,11 @@ export function FilterEditor({ columns, value, onChange }: Props) {
             }
             width={22}
           />
-          <ValueEditor filter={filter} kind={effectiveKind(filter)} onCommit={(next) => update(index, { value: next })} />
+          <ValueEditor
+            filter={filter}
+            kind={effectiveKind(filter)}
+            onCommit={(next, run) => update(index, { value: next }, run)}
+          />
           <IconButton
             name="trash-alt"
             tooltip="Remove filter"

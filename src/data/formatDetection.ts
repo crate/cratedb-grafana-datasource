@@ -12,8 +12,9 @@ const TIME_ALIAS = /\bas\s+(?:"time"|time)\s*$/i;
 const BODY_ALIAS = /\bas\s+(?:"body"|body)\s*$/i;
 // macros that expand to `... AS "time"` backend-side
 const TIME_ALIAS_MACROS = /\$__(?:timeGroupAlias|unixEpochGroupAlias)\s*\(/i;
-// a bare $__timeGroup(...) projection; the trailing-comma shorthand aliases it backend-side
-const BARE_TIME_GROUP = /^\$__timeGroup\s*\([^)]*\)$/i;
+// a bare $__timeGroup(...) projection; the trailing-comma shorthand aliases it
+// backend-side. Args allow one level of nested parens (e.g. date_trunc(...)).
+const BARE_TIME_GROUP = /^\$__timeGroup\s*\((?:[^()]|\([^()]*\))*\)$/i;
 // query plans render as rows of text, never as a time series
 const EXPLAIN = /^\s*explain\b/i;
 

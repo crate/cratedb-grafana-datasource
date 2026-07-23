@@ -72,6 +72,18 @@ func TestTimeGroup(t *testing.T) {
 		assert.Equal(t, `DATE_BIN('60 seconds'::INTERVAL, "ts", 0)`, got)
 	})
 
+	t.Run("sub-second interval keeps millisecond resolution", func(t *testing.T) {
+		got, err := TimeGroup(testQuery(""), []string{`"ts"`, "200ms"})
+		require.NoError(t, err)
+		assert.Equal(t, `DATE_BIN('200 milliseconds'::INTERVAL, "ts", 0)`, got)
+	})
+
+	t.Run("fractional-second interval keeps millisecond resolution", func(t *testing.T) {
+		got, err := TimeGroup(testQuery(""), []string{`"ts"`, "1500ms"})
+		require.NoError(t, err)
+		assert.Equal(t, `DATE_BIN('1500 milliseconds'::INTERVAL, "ts", 0)`, got)
+	})
+
 	t.Run("wrong arg count", func(t *testing.T) {
 		_, err := TimeGroup(testQuery(""), []string{`"ts"`})
 		assert.ErrorIs(t, err, sqlutil.ErrorBadArgumentCount)
@@ -124,6 +136,13 @@ func TestConditionalAll(t *testing.T) {
 		got, err := ConditionalAll(testQuery(""), []string{"location IN ('x')", ""})
 		require.NoError(t, err)
 		assert.Equal(t, "1=1", got)
+	})
+
+	t.Run("keeps the condition when the resolved value merely contains a dollar sign", func(t *testing.T) {
+		// a currency value like $100 is a concrete selection, not an unexpanded token
+		got, err := ConditionalAll(testQuery(""), []string{"price = '$100'", "'$100'"})
+		require.NoError(t, err)
+		assert.Equal(t, "price = '$100'", got)
 	})
 
 	t.Run("wrong arg count", func(t *testing.T) {

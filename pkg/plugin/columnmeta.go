@@ -41,19 +41,20 @@ func decodePair(encoded string) columnMeta {
 // defaulting to the datasource's configured default schema.
 func (d *CrateDB) ColumnMeta(ctx context.Context, schema, table string) ([]columnMeta, error) {
 	if schema == "" {
-		schema = d.defaultSchema
+		schema = d.schema()
 	}
 
 	ctx, span := tracing.DefaultTracer().Start(ctx, "cratedb.introspection")
 	defer span.End()
-	if d.db == nil {
+	db := d.conn()
+	if db == nil {
 		return nil, ErrNotConnected
 	}
 	key := cacheKey(columnMetaQuery, schema, table)
 	if cached := d.schemaCache.get(key); cached != nil {
 		return decodePairs(cached), nil
 	}
-	rows, err := d.db.QueryContext(ctx, columnMetaQuery, schema, table)
+	rows, err := db.QueryContext(ctx, columnMetaQuery, schema, table)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +96,7 @@ func (d *CrateDB) HandleColumnMeta(rw http.ResponseWriter, req *http.Request) {
 	}
 	meta, err := d.ColumnMeta(req.Context(), options["schema"], options["table"])
 	if err != nil {
-		http.Error(rw, err.Error(), http.StatusBadRequest)
+		writeResourceError(rw, err)
 		return
 	}
 	rw.Header().Add("Content-Type", "application/json")

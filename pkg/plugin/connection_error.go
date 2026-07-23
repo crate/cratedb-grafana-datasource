@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -75,6 +76,12 @@ func ClassifyError(err error) error {
 	}
 
 	return err
+}
+
+// writeResourceError reports a failed introspection call as 502 with a classified
+// message: a DB/connectivity failure is downstream, not a client error.
+func writeResourceError(rw http.ResponseWriter, err error) {
+	http.Error(rw, ClassifyError(err).Error(), http.StatusBadGateway)
 }
 
 // MutateQueryError implements sqlds.QueryErrorMutator: a failure is downstream

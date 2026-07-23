@@ -27,21 +27,12 @@ function qualify(name: { schema?: string; name: string }): string {
   return name.schema ? `${name.schema}.${name.name}` : name.name;
 }
 
-// table of the top-level FROM (descending one level into a subquery); empty when
-// there's no plain table to name
+// table of the top-level FROM, empty when there's no plain table to name. A
+// subquery FROM returns empty: its columns aren't reachable from an outer WHERE,
+// so ad-hoc injection is skipped rather than spliced at the wrong level.
 export function getTable(sql: string): string {
   const from = parseSelect(sql)?.from?.[0];
-  if (!from) {
-    return '';
-  }
-  if (from.type === 'table') {
-    return qualify(from.name);
-  }
-  if (from.type === 'statement' && from.statement.type === 'select') {
-    const inner = from.statement.from?.[0];
-    return inner?.type === 'table' ? qualify(inner.name) : '';
-  }
-  return '';
+  return from?.type === 'table' ? qualify(from.name) : '';
 }
 
 // splice predicate into the top-level WHERE (before GROUP BY): an existing WHERE

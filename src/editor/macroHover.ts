@@ -50,7 +50,6 @@ export function registerMacroHover(
   if (registered.has(languageId)) {
     return undefined;
   }
-  registered.add(languageId);
   const provider = languages.registerHoverProvider(languageId, {
     provideHover: (model, position) => {
       const found = findMacroAtPosition(model.getLineContent(position.lineNumber), position.column);
@@ -68,6 +67,9 @@ export function registerMacroHover(
       };
     },
   });
+  // mark registered only once the provider is live, so a throw above can't
+  // permanently suppress hover for this language id
+  registered.add(languageId);
   return {
     dispose: () => {
       registered.delete(languageId);

@@ -7,6 +7,7 @@ import {
   ColumnKind,
   Filter,
   FilterOperator,
+  OrderBy,
   QueryFormat,
   SelectedColumn,
 } from '../types';
@@ -114,6 +115,11 @@ function completeAggregates(options: BuilderOptions): AggregateColumn[] {
   return options.aggregates.filter(isCompleteAggregate);
 }
 
+// a column-less order-by row would emit `ORDER BY "" ...`; drop it until chosen
+function orderByRefs(orderBy: OrderBy[]): string[] {
+  return orderBy.filter((entry) => entry.column).map((entry) => `${escapeColumnRef(entry.column)} ${entry.dir}`);
+}
+
 function generateTableQuery(options: BuilderOptions): string {
   const aggregating = options.mode === BuilderMode.Aggregate;
   const select = aggregating
@@ -124,7 +130,7 @@ function generateTableQuery(options: BuilderOptions): string {
     from: tableIdent(options),
     where: whereChain(options.filters),
     groupBy: aggregating ? options.groupBy.map(escapeColumnRef) : [],
-    orderBy: options.orderBy.map((entry) => `${escapeColumnRef(entry.column)} ${entry.dir}`),
+    orderBy: orderByRefs(options.orderBy),
     limit: options.limit,
   });
 }
@@ -132,7 +138,7 @@ function generateTableQuery(options: BuilderOptions): string {
 function generateTimeSeriesQuery(options: BuilderOptions): string {
   const time = escapeColumnRef(getColumnByHint(options, ColumnHint.Time)!.column);
   const timeFilter = `$__timeFilter(${time})`;
-  const userOrder = options.orderBy.map((entry) => `${escapeColumnRef(entry.column)} ${entry.dir}`);
+  const userOrder = orderByRefs(options.orderBy);
 
   if (options.mode === BuilderMode.Aggregate) {
     const groupRefs = options.groupBy.map(escapeColumnRef);

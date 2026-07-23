@@ -22,7 +22,7 @@ const adhocKeysQuery = `SELECT table_name || '.' || column_name FROM information
 // defaulting to the datasource's configured default schema.
 func (d *CrateDB) AdHocKeys(ctx context.Context, schema string) ([]string, error) {
 	if schema == "" {
-		schema = d.defaultSchema
+		schema = d.schema()
 	}
 	return d.queryStrings(ctx, adhocKeysQuery, schema)
 }
@@ -36,7 +36,7 @@ func (d *CrateDB) HandleAdHocKeys(rw http.ResponseWriter, req *http.Request) {
 	}
 	keys, err := d.AdHocKeys(req.Context(), options["schema"])
 	if err != nil {
-		http.Error(rw, err.Error(), http.StatusBadRequest)
+		writeResourceError(rw, err)
 		return
 	}
 	rw.Header().Add("Content-Type", "application/json")

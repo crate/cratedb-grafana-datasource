@@ -126,6 +126,12 @@ describe('AdHocFilter', () => {
     expect(got).toContain(`"location" IN ('Berlin', 'Vienna')`);
   });
 
+  it('leaves a subquery-in-FROM query unchanged rather than splicing at the wrong level', () => {
+    const f = new AdHocFilter('doc');
+    const sql = 'SELECT sub.location FROM (SELECT location FROM weather) AS sub';
+    expect(f.apply(sql, [filter({})])).toBe(sql);
+  });
+
   it('preserves Grafana macros when injecting (the default template shape)', () => {
     const f = new AdHocFilter('doc');
     const sql =

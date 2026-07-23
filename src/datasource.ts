@@ -230,12 +230,17 @@ export class CrateDBDatasource
     });
   }
 
-  // run a single table query and return its first frame, if it has fields
-  private async runTableQuery(query: CrateDBQuery, range?: TimeRange): Promise<Frame | undefined> {
+  // run a single table query and return its first frame, if it has fields. The
+  // query pipeline interpolates once, so callers pass raw SQL plus any scopedVars.
+  private async runTableQuery(
+    query: CrateDBQuery,
+    options?: { range?: TimeRange; scopedVars?: ScopedVars }
+  ): Promise<Frame | undefined> {
     const response = await lastValueFrom(
       this.query({
         targets: [query],
-        ...(range ? { range } : {}),
+        ...(options?.range ? { range: options.range } : {}),
+        ...(options?.scopedVars ? { scopedVars: options.scopedVars } : {}),
       } as Parameters<DataSourceWithBackend<CrateDBQuery, CrateDBOptions>['query']>[0])
     );
     const frame: Frame | undefined = response.data?.[0];
@@ -256,10 +261,10 @@ export class CrateDBDatasource
       rawSql,
       format: QueryFormat.Table,
     };
-    const frame = await this.runTableQuery(
-      this.applyTemplateVariables(query, options?.scopedVars ?? {}),
-      options?.range
-    );
+    const frame = await this.runTableQuery(query, {
+      range: options?.range,
+      scopedVars: options?.scopedVars,
+    });
     if (!frame) {
       return [];
     }

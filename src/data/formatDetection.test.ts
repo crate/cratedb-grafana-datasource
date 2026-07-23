@@ -79,6 +79,10 @@ describe('detectFormat', () => {
     expect(detectFormat('SELECT $__timeGroup(ts, $__interval), avg(v) FROM t GROUP BY 1')).toBe(
       QueryFormat.Timeseries
     );
+    // an expression argument with nested parens is still recognized
+    expect(detectFormat(`SELECT $__timeGroup(date_trunc('hour', "ts"), '1h'), avg(v) FROM t GROUP BY 1`)).toBe(
+      QueryFormat.Timeseries
+    );
     // inside a wider expression the shorthand does not apply
     expect(detectFormat('SELECT max($__timeGroup(ts, 1m)), avg(v) FROM t')).toBe(QueryFormat.Table);
   });

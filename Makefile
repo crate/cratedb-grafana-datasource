@@ -93,7 +93,7 @@ test: test-backend test-frontend ## Unit tests (go + jest)
 
 .PHONY: test-backend
 test-backend: ## Go unit tests
-	go test ./pkg/...
+	go test -race ./pkg/...
 
 .PHONY: test-frontend
 test-frontend: ## Jest tests (CI mode)

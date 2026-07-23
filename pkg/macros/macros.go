@@ -8,12 +8,17 @@ package macros
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/gtime"
 	"github.com/grafana/grafana-plugin-sdk-go/data/sqlutil"
 )
+
+// templateToken matches an unexpanded Grafana reference ($__macro, ${var}, $var).
+// A bare $ before a digit (a value like $100) is not a token.
+var templateToken = regexp.MustCompile(`\$(?:__|\{|[a-zA-Z_])`)
 
 // Macros is the full CrateDB macro set, registered by the driver.
 var Macros = sqlutil.Macros{
@@ -55,6 +60,16 @@ func parseInterval(query *sqlutil.Query, arg string) (time.Duration, error) {
 
 func intervalSeconds(interval time.Duration) int64 {
 	return max(int64(interval.Seconds()), 1)
+}
+
+// intervalLiteral renders the DATE_BIN bucket width. Whole seconds read as "N
+// seconds"; sub-second widths use milliseconds so they aren't coarsened to 1s.
+func intervalLiteral(interval time.Duration) string {
+	ms := max(interval.Milliseconds(), 1)
+	if ms%1000 == 0 {
+		return fmt.Sprintf("%d seconds", ms/1000)
+	}
+	return fmt.Sprintf("%d milliseconds", ms)
 }
 
 // rangeFilter builds a `col >= from AND col <= to` condition with both bounds formatted by layout.
@@ -118,7 +133,7 @@ func TimeGroup(query *sqlutil.Query, args []string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("DATE_BIN('%d seconds'::INTERVAL, %s, 0)", intervalSeconds(interval), args[0]), nil
+	return fmt.Sprintf("DATE_BIN('%s'::INTERVAL, %s, 0)", intervalLiteral(interval), args[0]), nil
 }
 
 // TimeGroupAlias is TimeGroup aliased to "time" (the column Grafana's time-series frames expect).
@@ -173,7 +188,7 @@ func ConditionalAll(query *sqlutil.Query, args []string) (string, error) {
 		return "", fmt.Errorf("%w: macro $__conditionalAll needs a condition and a variable", sqlutil.ErrorBadArgumentCount)
 	}
 	variable := strings.TrimSpace(args[1])
-	if variable == "" || strings.Contains(variable, "$") {
+	if variable == "" || templateToken.MatchString(variable) {
 		return "1=1", nil
 	}
 	return args[0], nil

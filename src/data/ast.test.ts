@@ -23,8 +23,10 @@ describe('getTable', () => {
     expect(getTable("SELECT * FROM weather WHERE location = '$loc'")).toBe('weather');
   });
 
-  it('descends into subqueries', () => {
-    expect(getTable('SELECT * FROM (SELECT * FROM doc.weather) AS w')).toBe('doc.weather');
+  it('returns empty for a derived-table (subquery) FROM', () => {
+    // the inner columns live one level down, so an outer WHERE can't reference
+    // them — ad-hoc injection is skipped rather than producing malformed SQL
+    expect(getTable('SELECT * FROM (SELECT * FROM doc.weather) AS w')).toBe('');
   });
 
   it('returns empty string for non-select statements', () => {

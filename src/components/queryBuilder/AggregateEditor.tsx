@@ -66,13 +66,16 @@ export function AggregateEditor({ columns, value, onChange }: Props) {
             width={25}
           />
           <Input
-            defaultValue={aggregate.alias ?? ''}
+            // controlled so a middle-row delete can't leave stale text on a
+            // shifted row; typing updates state without running, blur/Enter runs
+            value={aggregate.alias ?? ''}
             placeholder="Alias"
             width={16}
-            onBlur={(event) => update(index, { alias: event.currentTarget.value || undefined })}
+            onChange={(event) => update(index, { alias: event.currentTarget.value || undefined }, false)}
+            onBlur={(event) => update(index, { alias: event.currentTarget.value || undefined }, true)}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
-                update(index, { alias: event.currentTarget.value || undefined });
+                update(index, { alias: event.currentTarget.value || undefined }, true);
               }
             }}
           />

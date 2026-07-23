@@ -3,6 +3,7 @@ import {
   CoreApp,
   DataQueryRequest,
   DataSourceInstanceSettings,
+  ScopedVars,
   SupplementaryQueryType,
   TimeRange,
 } from '@grafana/data';
@@ -300,6 +301,21 @@ describe('CrateDBDatasource.metricFindQuery', () => {
     await ds.metricFindQuery('SELECT DISTINCT host FROM m WHERE $__timeFilter(ts)', { range });
 
     expect(query.mock.calls[0][0].range).toBe(range);
+  });
+
+  // the query() pipeline interpolates once; pre-interpolating here would re-process
+  // a resolved value that itself contains $ / ${...} / $__conditionalAll text
+  it('interpolates once: hands raw SQL and scopedVars to the query pipeline', async () => {
+    const ds = makeDatasource();
+    const query = withQueryResult(ds, { fields: [{ name: 'host', values: ['a'] }] });
+    const applySpy = jest.spyOn(ds, 'applyTemplateVariables');
+    const scopedVars = { host: { text: 'a', value: 'a' } } as unknown as ScopedVars;
+
+    await ds.metricFindQuery('SELECT $host FROM m', { scopedVars });
+
+    expect(applySpy).not.toHaveBeenCalled();
+    expect(query.mock.calls[0][0].targets[0].rawSql).toBe('SELECT $host FROM m');
+    expect(query.mock.calls[0][0].scopedVars).toBe(scopedVars);
   });
 });
 

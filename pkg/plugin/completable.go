@@ -36,7 +36,7 @@ func (d *CrateDB) Schemas(ctx context.Context, options sqlds.Options) ([]string,
 func (d *CrateDB) Tables(ctx context.Context, options sqlds.Options) ([]string, error) {
 	schema := options["schema"]
 	if schema == "" {
-		schema = d.defaultSchema
+		schema = d.schema()
 	}
 	return d.queryStrings(ctx, tablesQuery, schema)
 }
@@ -45,7 +45,7 @@ func (d *CrateDB) Tables(ctx context.Context, options sqlds.Options) ([]string, 
 func (d *CrateDB) Columns(ctx context.Context, options sqlds.Options) ([]string, error) {
 	schema := options["schema"]
 	if schema == "" {
-		schema = d.defaultSchema
+		schema = d.schema()
 	}
 	return d.queryStrings(ctx, columnsQuery, schema, options["table"])
 }
@@ -53,14 +53,15 @@ func (d *CrateDB) Columns(ctx context.Context, options sqlds.Options) ([]string,
 func (d *CrateDB) queryStrings(ctx context.Context, query string, args ...interface{}) ([]string, error) {
 	ctx, span := tracing.DefaultTracer().Start(ctx, "cratedb.introspection")
 	defer span.End()
-	if d.db == nil {
+	db := d.conn()
+	if db == nil {
 		return nil, ErrNotConnected
 	}
 	key := cacheKey(query, args...)
 	if cached := d.schemaCache.get(key); cached != nil {
 		return cached, nil
 	}
-	rows, err := d.db.QueryContext(ctx, query, args...)
+	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

@@ -78,7 +78,7 @@ export function clampRangeBeforeMacro<T extends SuggestionLike>(model: ModelLike
 // exactly that one registration and wrap it.
 export function interceptNextCompletionRegistration(languages: LanguagesRegistryLike) {
   const original = languages.registerCompletionItemProvider;
-  languages.registerCompletionItemProvider = function (languageId, provider) {
+  const patched: LanguagesRegistryLike['registerCompletionItemProvider'] = function (languageId, provider) {
     languages.registerCompletionItemProvider = original;
     const provide = provider.provideCompletionItems?.bind(provider);
     if (!provide) {
@@ -95,6 +95,14 @@ export function interceptNextCompletionRegistration(languages: LanguagesRegistry
       },
     });
   };
+  languages.registerCompletionItemProvider = patched;
+  // registration is expected synchronously; if it never fires, revert so the
+  // patch can't later wrap an unrelated provider
+  queueMicrotask(() => {
+    if (languages.registerCompletionItemProvider === patched) {
+      languages.registerCompletionItemProvider = original;
+    }
+  });
 }
 
 export const getCrateDBCompletionProvider: (args: CompletionProviderGetterArgs) => LanguageCompletionProvider =

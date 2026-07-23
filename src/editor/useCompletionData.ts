@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { CrateDBDatasource } from '../datasource';
 
@@ -12,15 +12,22 @@ interface Suggestion {
 // DQL on information_schema learns why only keywords are offered. Clears on next success.
 export function useCompletionData(datasource: CrateDBDatasource) {
   const [error, setError] = useState(false);
+  // a generation guard keeps a slow earlier lookup from clobbering the latest
+  const generation = useRef(0);
 
   const wrap = useCallback(async (fetch: () => Promise<string[]>): Promise<Suggestion[]> => {
+    const gen = ++generation.current;
     try {
       const values = await fetch();
-      setError(false);
+      if (gen === generation.current) {
+        setError(false);
+      }
       return values.map((value) => ({ name: value, completion: value }));
     } catch (err) {
       console.warn('CrateDB autocomplete: schema lookup failed', err);
-      setError(true);
+      if (gen === generation.current) {
+        setError(true);
+      }
       return [];
     }
   }, []);

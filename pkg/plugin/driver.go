@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
@@ -34,12 +35,29 @@ const PluginID = "cratedb-cratedb-datasource"
 
 // CrateDB implements sqlds.Driver (and sqlds.Completable, in completable.go).
 type CrateDB struct {
+	// mu guards db and defaultSchema: Connect writes them while resource-route
+	// handlers read them on other goroutines.
+	mu sync.RWMutex
 	// db is cached by Connect for the Completable introspection queries.
 	db *sql.DB
 	// defaultSchema is the autocomplete fallback when the frontend sends none.
 	defaultSchema string
 	// schemaCache fronts the introspection queries; TTL 0 disables it.
 	schemaCache schemaCache
+}
+
+// conn returns the cached introspection connection under the read lock.
+func (d *CrateDB) conn() *sql.DB {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.db
+}
+
+// schema returns the configured default schema under the read lock.
+func (d *CrateDB) schema() string {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.defaultSchema
 }
 
 func getClientVersion(ctx context.Context) string {
@@ -68,8 +86,10 @@ func (d *CrateDB) Connect(ctx context.Context, config backend.DataSourceInstance
 		return nil, err
 	}
 
+	d.mu.Lock()
 	d.db = db
 	d.defaultSchema = settings.DefaultSchema
+	d.mu.Unlock()
 	ttl := time.Duration(settings.SchemaCacheTTLSeconds) * time.Second
 	if settings.DisableSchemaCache {
 		ttl = 0

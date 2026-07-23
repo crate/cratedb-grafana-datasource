@@ -93,6 +93,18 @@ describe('generateSql', () => {
     );
   });
 
+  it('drops an order-by row that has no column yet', () => {
+    // a freshly added order-by row is seeded empty before columns load; it must
+    // not emit ORDER BY "" ASC
+    const sql = generateSql(
+      tableOptions({
+        columns: [{ column: 'host' }],
+        orderBy: [{ column: '', dir: 'ASC' }],
+      })
+    );
+    expect(sql).not.toContain('ORDER BY');
+  });
+
   it('keeps incomplete aggregate rows out of the SQL', () => {
     // '*' only fits count; a row mid-edit (cleared or mismatched) must not
     // produce an invalid call like avg(*)
