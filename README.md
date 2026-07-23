@@ -205,6 +205,7 @@ for etiquette (CLA, PR conventions); everything technical is in [Development](#d
 
 ## License
 
-Apache-2.0. Inspired from the [QuestDB Grafana plugin](https://github.com/questdb/grafana-questdb-datasource)
-(itself derived from the ClickHouse plugin by Grafana Labs & ClickHouse).
-See `LICENSE` and `NOTICE`.
+SPDX-License-Identifier: `Apache-2.0`.
+
+Adapted from the [QuestDB Grafana plugin](https://github.com/questdb/grafana-questdb-datasource)
+(itself derived from the ClickHouse plugin by Grafana Labs & ClickHouse). See `LICENSE` and `NOTICE`.

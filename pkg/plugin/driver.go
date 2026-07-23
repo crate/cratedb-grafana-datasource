@@ -159,22 +159,27 @@ func (d *CrateDB) PreCheckHealth(ctx context.Context, req *backend.CheckHealthRe
 	if req == nil || req.PluginContext.DataSourceInstanceSettings == nil {
 		return nil
 	}
-	settings, err := LoadSettings(*req.PluginContext.DataSourceInstanceSettings)
-	if err == nil {
-		var db *sql.DB
-		db, err = d.open(ctx, *req.PluginContext.DataSourceInstanceSettings, settings)
-		if err == nil {
-			pingCtx, cancel := context.WithTimeout(ctx, settings.queryTimeout())
-			err = db.PingContext(pingCtx)
-			cancel()
-			_ = db.Close()
-		}
-	}
-	if err != nil {
+	unhealthy := func(err error) *backend.CheckHealthResult {
 		return &backend.CheckHealthResult{
 			Status:  backend.HealthStatusError,
 			Message: ClassifyError(err).Error(),
 		}
+	}
+
+	settings, err := LoadSettings(*req.PluginContext.DataSourceInstanceSettings)
+	if err != nil {
+		return unhealthy(err)
+	}
+	db, err := d.open(ctx, *req.PluginContext.DataSourceInstanceSettings, settings)
+	if err != nil {
+		return unhealthy(err)
+	}
+	defer db.Close()
+
+	pingCtx, cancel := context.WithTimeout(ctx, settings.queryTimeout())
+	defer cancel()
+	if err := db.PingContext(pingCtx); err != nil {
+		return unhealthy(err)
 	}
 	return nil
 }
@@ -191,6 +196,11 @@ func configureTLS(cc *pgx.ConnConfig, settings Settings) error {
 	if settings.TLSConfigurationMethod == "file-path" {
 		return nil
 	}
+	// a client cert without its key (or vice versa) is unusable; reject it before
+	// touching the tls.Config
+	if (settings.TLSClientCert == "") != (settings.TLSClientKey == "") {
+		return errors.New("TLS client certificate and key must both be specified")
+	}
 	tlsConfig := cc.TLSConfig
 	if tlsConfig == nil {
 		tlsConfig = &tls.Config{} //nolint:gosec // verification level is governed by sslmode
@@ -203,10 +213,7 @@ func configureTLS(cc *pgx.ConnConfig, settings Settings) error {
 		}
 		tlsConfig.RootCAs = pool
 	}
-	if settings.TLSClientCert != "" || settings.TLSClientKey != "" {
-		if settings.TLSClientCert == "" || settings.TLSClientKey == "" {
-			return errors.New("TLS client certificate and key must both be specified")
-		}
+	if settings.TLSClientCert != "" {
 		cert, err := tls.X509KeyPair([]byte(settings.TLSClientCert), []byte(settings.TLSClientKey))
 		if err != nil {
 			return fmt.Errorf("could not load client certificate pair: %w", err)
