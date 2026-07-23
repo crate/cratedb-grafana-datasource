@@ -172,7 +172,7 @@ func (d *CrateDB) PreCheckHealth(ctx context.Context, req *backend.CheckHealthRe
 	if err != nil {
 		return unhealthy(err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	pingCtx, cancel := context.WithTimeout(ctx, settings.queryTimeout())
 	defer cancel()
