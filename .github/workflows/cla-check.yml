@@ -1,0 +1,17 @@
+# Verifies the PR author has signed Crate's Contributor License Agreement.
+# Delegates to the shared crate/actions workflow, which checks the author against
+# crate/clabot-config's contributors.csv and manages the cla-signed / needs CLA
+# labels (commenting once when unsigned). Runs under pull_request_target so it can
+# label/comment on forks; secrets: inherit passes the org token the shared
+# workflow needs to read the contributors list.
+name: CLA check
+on:
+  pull_request_target:
+    branches:
+      - main
+    types: [opened, synchronize, unlabeled]
+
+jobs:
+  check-author-signed-cla:
+    uses: crate/actions/.github/workflows/cla-check-workflow.yml@main
+    secrets: inherit
