@@ -45,7 +45,16 @@ export function AggregateEditor({ columns, value, onChange }: Props) {
           <Combobox
             options={FUNCTIONS}
             value={aggregate.aggregateType}
-            onChange={(selected) => update(index, { aggregateType: selected.value })}
+            onChange={(selected) => {
+              // '*' is an argument only count accepts; the row waits for a real
+              // column instead of running with an invalid call
+              const keepsColumn = aggregate.column !== '*' || selected.value === AggregateType.Count;
+              update(
+                index,
+                { aggregateType: selected.value, ...(keepsColumn ? {} : { column: '' }) },
+                keepsColumn
+              );
+            }}
             width={16}
           />
           <Combobox

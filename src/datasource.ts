@@ -7,8 +7,11 @@ import {
   DataQueryRequest,
   DataQueryResponse,
   DataSourceInstanceSettings,
+  DataSourceWithSupplementaryQueriesSupport,
   MetricFindValue,
   ScopedVars,
+  SupplementaryQueryOptions,
+  SupplementaryQueryType,
   TimeRange,
 } from '@grafana/data';
 import { DataSourceWithBackend, getTemplateSrv } from '@grafana/runtime';
@@ -19,9 +22,11 @@ import { AdHocFilter } from './data/adHocFilter';
 import { applyConditionalAll } from './data/conditionalAll';
 import { escapeColumnRef, escapeIdentifier } from './data/escape';
 import { interpolateVariable } from './data/interpolate';
+import { splitLogVolumeFrames } from './data/logVolume';
 import { attachTimeBoundNotices } from './data/queryHints';
-import { defaultBuilderOptions } from './data/sqlGenerator';
-import { ColumnMeta, CrateDBOptions, CrateDBQuery, EditorType, QueryFormat } from './types';
+import { defaultBuilderOptions, generateLogVolumeSql } from './data/sqlGenerator';
+import { parseSqlToBuilderOptions } from './data/sqlParser';
+import { BuilderOptions, ColumnMeta, CrateDBOptions, CrateDBQuery, EditorType, QueryFormat } from './types';
 import { CrateDBVariableSupport } from './variables';
 
 // cap for the DISTINCT scan behind ad-hoc value dropdowns
@@ -53,7 +58,13 @@ interface Frame {
   fields: Array<{ name: string; values: unknown[] }>;
 }
 
-export class CrateDBDatasource extends DataSourceWithBackend<CrateDBQuery, CrateDBOptions> {
+// prefixes a supplementary target's refId so its frames are attributable
+const LOG_VOLUME_REFID_PREFIX = 'log-volume-';
+
+export class CrateDBDatasource
+  extends DataSourceWithBackend<CrateDBQuery, CrateDBOptions>
+  implements DataSourceWithSupplementaryQueriesSupport<CrateDBQuery>
+{
   defaultSchema: string;
   adHocFilter: AdHocFilter;
   // coalesce concurrent autocomplete/ad-hoc dropdown bursts into one request
@@ -86,10 +97,13 @@ export class CrateDBDatasource extends DataSourceWithBackend<CrateDBQuery, Crate
     };
   }
 
-  // post-process super.query to stamp the "no time macro" hint on frames whose SQL
-  // ignores the panel time range
+  // post-process super.query: split logs-volume frames per severity, and stamp
+  // the "no time macro" hint on frames whose SQL ignores the panel time range
   query(request: DataQueryRequest<CrateDBQuery>): Observable<DataQueryResponse> {
-    return super.query(request).pipe(map((response) => attachTimeBoundNotices(request, response)));
+    return super.query(request).pipe(
+      map((response) => ({ ...response, data: splitLogVolumeFrames(response.data, LOG_VOLUME_REFID_PREFIX) })),
+      map((response) => attachTimeBoundNotices(request, response))
+    );
   }
 
   // all frontend-side SQL rewriting, run per target before the backend expands $__ macros.
@@ -106,6 +120,60 @@ export class CrateDBDatasource extends DataSourceWithBackend<CrateDBQuery, Crate
   // false skips the target, so a blank new-panel editor doesn't fire an empty query
   filterQuery(query: CrateDBQuery): boolean {
     return !!query.rawSql;
+  }
+
+  // ---- supplementary queries: the Explore logs-volume histogram ------------
+  // Without these, Explore buckets only the (LIMITed) returned log lines and
+  // flags the graph as partial; with them it runs a full-range aggregation.
+
+  getSupportedSupplementaryQueryTypes(): SupplementaryQueryType[] {
+    return [SupplementaryQueryType.LogsVolume];
+  }
+
+  getSupplementaryQuery(options: SupplementaryQueryOptions, query: CrateDBQuery): CrateDBQuery | undefined {
+    if (options.type !== SupplementaryQueryType.LogsVolume) {
+      return undefined;
+    }
+    const logsOptions = this.logsBuilderOptions(query);
+    const rawSql = logsOptions ? generateLogVolumeSql(logsOptions) : '';
+    if (!rawSql) {
+      return undefined;
+    }
+    return {
+      refId: `${LOG_VOLUME_REFID_PREFIX}${query.refId}`,
+      rawSql,
+      format: QueryFormat.Timeseries,
+    };
+  }
+
+  getSupplementaryRequest(
+    type: SupplementaryQueryType,
+    request: DataQueryRequest<CrateDBQuery>
+  ): DataQueryRequest<CrateDBQuery> | undefined {
+    if (type !== SupplementaryQueryType.LogsVolume) {
+      return undefined;
+    }
+    const targets = request.targets
+      .filter((query) => !query.hide)
+      .map((query) => this.getSupplementaryQuery({ type }, query))
+      .filter((query): query is CrateDBQuery => query !== undefined);
+    if (targets.length === 0) {
+      return undefined;
+    }
+    return { ...request, targets, hideFromInspector: true };
+  }
+
+  // the logs shape behind a query, whichever surface edits it: builder state
+  // directly, or hand-written SQL re-derived through the parser
+  private logsBuilderOptions(query: CrateDBQuery): BuilderOptions | undefined {
+    if (query.format !== QueryFormat.Logs) {
+      return undefined;
+    }
+    const options =
+      query.editorType === EditorType.Builder
+        ? query.builderOptions
+        : parseSqlToBuilderOptions(query.rawSql, this.defaultSchema);
+    return options?.flavor === QueryFormat.Logs ? options : undefined;
   }
 
   // autocomplete data from the backend's sqlds resource routes

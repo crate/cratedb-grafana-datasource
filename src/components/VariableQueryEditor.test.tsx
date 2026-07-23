@@ -39,6 +39,21 @@ function makeProps(query: Partial<CrateDBVariableQuery>) {
 }
 
 describe('VariableQueryEditor', () => {
+  it('renders a bare-string query and upgrades it to the model on edit', () => {
+    const props = makeProps({});
+    render(
+      <VariableQueryEditor
+        {...props}
+        query={'SELECT DISTINCT location FROM doc.demo_metrics' as unknown as CrateDBVariableQuery}
+      />
+    );
+
+    expect(screen.getByTestId('sql-editor')).toHaveValue('SELECT DISTINCT location FROM doc.demo_metrics');
+
+    fireEvent.change(screen.getByTestId('sql-editor'), { target: { value: 'SELECT 1' } });
+    expect(props.onChange).toHaveBeenCalledWith({ refId: 'A', rawSql: 'SELECT 1' });
+  });
+
   it('renders the incoming query string in the editor', () => {
     render(<VariableQueryEditor {...makeProps({ rawSql: 'SELECT name FROM sys.nodes' })} />);
 

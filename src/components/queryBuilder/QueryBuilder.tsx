@@ -93,7 +93,9 @@ export function QueryBuilder({ datasource, options, onChange }: Props) {
           <RadioButtonGroup options={FLAVORS} value={options.flavor} onChange={changeFlavor} />
         </EditorField>
       </EditorRow>
-      <View columns={columns} options={options} onChange={onChange} />
+      {/* keyed so a table change remounts the editors, dropping any picker
+          state (typed filter text) bound to the previous table */}
+      <View key={`${options.schema}.${options.table}`} columns={columns} options={options} onChange={onChange} />
       <EditorRow>
         <SqlPreview sql={generateSql(options)} />
       </EditorRow>

@@ -7,7 +7,13 @@ import {
   FilterOperator,
   QueryFormat,
 } from '../types';
-import { defaultBuilderOptions, generateSql, isRunnable, LOGS_DEFAULT_LIMIT } from './sqlGenerator';
+import {
+  defaultBuilderOptions,
+  generateLogVolumeSql,
+  generateSql,
+  isRunnable,
+  LOGS_DEFAULT_LIMIT,
+} from './sqlGenerator';
 
 function tableOptions(overrides: Partial<BuilderOptions> = {}): BuilderOptions {
   return {
@@ -85,6 +91,23 @@ describe('generateSql', () => {
     expect(sql).toBe(
       'SELECT\n  "host",\n  "value" AS "v"\nFROM "doc"."demo_metrics"\nORDER BY "host" DESC\nLIMIT 50'
     );
+  });
+
+  it('keeps incomplete aggregate rows out of the SQL', () => {
+    // '*' only fits count; a row mid-edit (cleared or mismatched) must not
+    // produce an invalid call like avg(*)
+    const sql = generateSql(
+      timeseriesOptions({
+        aggregates: [
+          { aggregateType: AggregateType.Avg, column: '*' },
+          { aggregateType: AggregateType.Sum, column: '' },
+          { aggregateType: AggregateType.Count, column: '*', alias: 'value' },
+        ],
+      })
+    );
+    expect(sql).toContain('count(*) AS "value"');
+    expect(sql).not.toContain('avg');
+    expect(sql).not.toContain('sum');
   });
 
   it('interleaves group-by columns and aggregates in aggregate mode', () => {
@@ -280,6 +303,57 @@ describe('generateSql filters', () => {
     expect(generateSql(timeseriesOptions({ filters: [orChain[0]] }))).toContain(
       `WHERE $__timeFilter("ts") AND "host" = 'a'`
     );
+  });
+});
+
+describe('generateLogVolumeSql', () => {
+  it('buckets counts by severity when a level column is assigned', () => {
+    const sql = generateLogVolumeSql(logsOptions());
+    expect(sql).toBe(
+      'SELECT\n' +
+        '  $__timeGroupAlias("ts", $__interval),\n' +
+        `  sum(CASE WHEN lower(CAST("level" AS TEXT)) IN ('critical', 'crit', 'fatal', 'emerg', 'alert') THEN 1 ELSE 0 END) AS "critical",\n` +
+        `  sum(CASE WHEN lower(CAST("level" AS TEXT)) IN ('error', 'err') THEN 1 ELSE 0 END) AS "error",\n` +
+        `  sum(CASE WHEN lower(CAST("level" AS TEXT)) IN ('warn', 'warning') THEN 1 ELSE 0 END) AS "warn",\n` +
+        `  sum(CASE WHEN lower(CAST("level" AS TEXT)) IN ('info', 'information', 'notice') THEN 1 ELSE 0 END) AS "info",\n` +
+        `  sum(CASE WHEN lower(CAST("level" AS TEXT)) IN ('debug', 'dbug') THEN 1 ELSE 0 END) AS "debug",\n` +
+        `  sum(CASE WHEN lower(CAST("level" AS TEXT)) IN ('trace') THEN 1 ELSE 0 END) AS "trace",\n` +
+        `  sum(CASE WHEN lower(CAST("level" AS TEXT)) IN ('critical', 'crit', 'fatal', 'emerg', 'alert', 'error', 'err', 'warn', 'warning', 'info', 'information', 'notice', 'debug', 'dbug', 'trace') THEN 0 ELSE 1 END) AS "unknown"\n` +
+        'FROM "doc"."demo_logs"\n' +
+        'WHERE $__timeFilter("ts")\n' +
+        'GROUP BY 1\n' +
+        'ORDER BY 1'
+    );
+  });
+
+  it('counts all lines when no level column is assigned', () => {
+    const options = logsOptions({
+      columns: [
+        { column: 'ts', hint: ColumnHint.Time },
+        { column: 'message', hint: ColumnHint.LogMessage },
+      ],
+    });
+    expect(generateLogVolumeSql(options)).toBe(
+      'SELECT\n' +
+        '  $__timeGroupAlias("ts", $__interval),\n' +
+        '  count(*) AS "logs"\n' +
+        'FROM "doc"."demo_logs"\n' +
+        'WHERE $__timeFilter("ts")\n' +
+        'GROUP BY 1\n' +
+        'ORDER BY 1'
+    );
+  });
+
+  it('carries the logs query filters into the histogram', () => {
+    const options = logsOptions({
+      filters: [{ column: 'host', operator: FilterOperator.Equals, value: 'web-1', condition: 'AND' }],
+    });
+    expect(generateLogVolumeSql(options)).toContain(`WHERE $__timeFilter("ts") AND "host" = 'web-1'`);
+  });
+
+  it('yields nothing for non-logs or unrunnable state', () => {
+    expect(generateLogVolumeSql(timeseriesOptions())).toBe('');
+    expect(generateLogVolumeSql(logsOptions({ table: '' }))).toBe('');
   });
 });
 

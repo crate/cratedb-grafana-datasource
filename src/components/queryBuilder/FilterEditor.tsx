@@ -67,7 +67,15 @@ function valueless(operator: FilterOperator): boolean {
   return NULL_OPERATORS.includes(operator) || operator === FilterOperator.WithinTimeRange;
 }
 
-function ValueEditor({ filter, onCommit }: { filter: Filter; onCommit: (value: string | string[]) => void }) {
+function ValueEditor({
+  filter,
+  kind,
+  onCommit,
+}: {
+  filter: Filter;
+  kind: ColumnKind | undefined;
+  onCommit: (value: string | string[]) => void;
+}) {
   if (valueless(filter.operator)) {
     return null;
   }
@@ -84,7 +92,7 @@ function ValueEditor({ filter, onCommit }: { filter: Filter; onCommit: (value: s
       />
     );
   }
-  if (filter.type === 'boolean') {
+  if (kind === 'boolean') {
     const value = Array.isArray(filter.value) ? undefined : filter.value;
     return (
       <Combobox options={BOOLEAN_VALUES} value={value ?? null} onChange={(v) => onCommit(v.value)} width={12} />
@@ -119,6 +127,10 @@ export function FilterEditor({ columns, value, onChange }: Props) {
     );
   };
 
+  // a filter that arrived without a stored kind (e.g. re-derived from SQL)
+  // still gets kind-aware operators and value editing via column metadata
+  const effectiveKind = (filter: Filter): ColumnKind | undefined => filter.type ?? kindOf(filter.column);
+
   return (
     <Stack direction="column" gap={0.5}>
       {value.map((filter, index) => (
@@ -140,14 +152,14 @@ export function FilterEditor({ columns, value, onChange }: Props) {
             }
           />
           <Combobox
-            options={operatorsFor(filter.type).map((operator) => ({ label: operator, value: operator }))}
+            options={operatorsFor(effectiveKind(filter)).map((operator) => ({ label: operator, value: operator }))}
             value={filter.operator}
             onChange={(selected) =>
               update(index, { operator: selected.value, ...(valueless(selected.value) ? { value: undefined } : {}) })
             }
             width={22}
           />
-          <ValueEditor filter={filter} onCommit={(next) => update(index, { value: next })} />
+          <ValueEditor filter={filter} kind={effectiveKind(filter)} onCommit={(next) => update(index, { value: next })} />
           <IconButton
             name="trash-alt"
             tooltip="Remove filter"

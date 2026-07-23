@@ -41,7 +41,10 @@ Initial release.
 - **Type mapping**: CrateDB `OBJECT` columns surface as structured JSON fields (expandable
   in table panels); arrays keep their PostgreSQL text form.
 - **Logs**: a *Logs* query format renders rows as log lines (e.g. in Explore); alias columns
-  as `time`, `body`, and optionally `level` (see the cheat sheet's logs template).
+  as `time`, `body`, and optionally `level` (see the cheat sheet's logs template). Explore's
+  logs-volume histogram runs as a full-range aggregation (severity-bucketed when a level
+  column is present) instead of bucketing only the returned lines — for hand-written SQL too,
+  via the SQL-to-builder parser.
 - **Bundled dashboards**: *CrateDB Cluster Health* (`sys`-schema monitoring, no separate
   exporter) and *CrateDB Getting Started* (the recommended query pattern plus an OBJECT
   column, a Logs-format panel, and an annotation query — all runnable against the dev

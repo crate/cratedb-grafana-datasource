@@ -51,3 +51,16 @@ test('getting started: all panels render without errors', { tag: '@critical' }, 
     'Demo logs (Logs format)',
   ]);
 });
+
+// The dashboard stores the variable query as a bare SQL string (the shape
+// generic SQL dashboards carry) — its values must still resolve into the
+// picker, end to end through CustomVariableSupport and metricFindQuery.
+test('getting started: the location variable offers the seeded values', async ({ gotoDashboardPage, page }) => {
+  await gotoDashboardPage({ uid: 'cratedb-getting-started' });
+
+  await page.getByRole('combobox', { name: 'Location' }).click();
+
+  for (const value of ['Berlin', 'Vienna', 'Zurich']) {
+    await expect(page.getByRole('option', { name: value })).toBeVisible({ timeout: 15_000 });
+  }
+});

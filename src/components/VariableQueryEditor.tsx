@@ -9,13 +9,15 @@ import { getCrateDBCompletionProvider } from '../editor/completionProvider';
 import { useCompletionData } from '../editor/useCompletionData';
 import { useMonacoAutoLayout } from '../editor/useMonacoAutoLayout';
 import { CrateDBOptions, CrateDBQuery, CrateDBVariableQuery } from '../types';
+import { variableRawSql } from '../variables';
 
 type Props = QueryEditorProps<CrateDBDatasource, CrateDBQuery, CrateDBOptions, CrateDBVariableQuery>;
 
 // Query-variable editor: the panel's Monaco SQL editor (autocomplete + macro hover)
-// minus the format picker, since variable queries always run as tables.
+// minus the format picker, since variable queries always run as tables. Accepts
+// the bare-string query shape generic SQL dashboards store; edits emit the model.
 export function VariableQueryEditor({ query, onChange, datasource }: Props) {
-  const rawSql = query.rawSql ?? '';
+  const rawSql = variableRawSql(query);
 
   const { getSchemas, getTables, getColumns, error: completionError } = useCompletionData(datasource);
   const completionProvider = useMemo(
@@ -31,7 +33,9 @@ export function VariableQueryEditor({ query, onChange, datasource }: Props) {
         <div ref={editorRef} style={{ flex: 1, minWidth: 0 }}>
           <SQLEditor
             query={rawSql}
-            onChange={(sql) => onChange({ ...query, rawSql: sql })}
+            onChange={(sql) =>
+              onChange(typeof query === 'object' && query ? { ...query, rawSql: sql } : { refId: 'A', rawSql: sql })
+            }
             language={{ id: 'sql', completionProvider }}
           />
         </div>

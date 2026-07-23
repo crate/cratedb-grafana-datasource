@@ -101,10 +101,23 @@ export function generateSql(options: BuilderOptions): string {
   }
 }
 
+// '*' is an argument only count accepts; a row still missing its column (or
+// carrying '*' into another function) stays out of the SQL until completed
+function isCompleteAggregate(aggregate: AggregateColumn): boolean {
+  if (!aggregate.column) {
+    return false;
+  }
+  return aggregate.column !== '*' || aggregate.aggregateType === AggregateType.Count;
+}
+
+function completeAggregates(options: BuilderOptions): AggregateColumn[] {
+  return options.aggregates.filter(isCompleteAggregate);
+}
+
 function generateTableQuery(options: BuilderOptions): string {
   const aggregating = options.mode === BuilderMode.Aggregate;
   const select = aggregating
-    ? [...options.groupBy.map(escapeColumnRef), ...options.aggregates.map(aggregateExpr)]
+    ? [...options.groupBy.map(escapeColumnRef), ...completeAggregates(options).map(aggregateExpr)]
     : options.columns.map(columnExpr);
   return assemble({
     select: select.length > 0 ? select : ['*'],
@@ -124,7 +137,7 @@ function generateTimeSeriesQuery(options: BuilderOptions): string {
   if (options.mode === BuilderMode.Aggregate) {
     const groupRefs = options.groupBy.map(escapeColumnRef);
     return assemble({
-      select: [`$__timeGroupAlias(${time}, $__interval)`, ...groupRefs, ...options.aggregates.map(aggregateExpr)],
+      select: [`$__timeGroupAlias(${time}, $__interval)`, ...groupRefs, ...completeAggregates(options).map(aggregateExpr)],
       from: tableIdent(options),
       where: prependCondition(timeFilter, whereChain(options.filters)),
       groupBy: ['1', ...groupRefs],
@@ -141,6 +154,52 @@ function generateTimeSeriesQuery(options: BuilderOptions): string {
     where: prependCondition(timeFilter, whereChain(options.filters)),
     orderBy: [`${time} ASC`, ...userOrder],
     limit: options.limit,
+  });
+}
+
+// per-level buckets for the logs-volume histogram, keyed by the field names
+// Grafana's severity coloring recognizes; each bucket absorbs the lowercased
+// level spellings on the right
+const LOG_LEVEL_BUCKETS: Array<[string, string[]]> = [
+  ['critical', ['critical', 'crit', 'fatal', 'emerg', 'alert']],
+  ['error', ['error', 'err']],
+  ['warn', ['warn', 'warning']],
+  ['info', ['info', 'information', 'notice']],
+  ['debug', ['debug', 'dbug']],
+  ['trace', ['trace']],
+];
+
+// the LogsVolume supplementary query for a logs builder state: log counts per
+// $__interval bucket over the full dashboard range, split by severity when a
+// level column is assigned. Same table and filters as the logs query itself.
+export function generateLogVolumeSql(options: BuilderOptions): string {
+  if (options.flavor !== QueryFormat.Logs || !isRunnable(options)) {
+    return '';
+  }
+  const time = escapeColumnRef(getColumnByHint(options, ColumnHint.Time)!.column);
+  const level = getColumnByHint(options, ColumnHint.LogLevel);
+
+  const select = [`$__timeGroupAlias(${time}, $__interval)`];
+  if (level) {
+    // CAST tolerates non-text level columns; NULL and unrecognized spellings
+    // land in "unknown"
+    const normalized = `lower(CAST(${escapeColumnRef(level.column)} AS TEXT))`;
+    const bucketExpr = (values: string[]) => `${normalized} IN (${values.map(quoteLiteral).join(', ')})`;
+    for (const [bucket, values] of LOG_LEVEL_BUCKETS) {
+      select.push(`sum(CASE WHEN ${bucketExpr(values)} THEN 1 ELSE 0 END) AS ${escapeIdentifier(bucket)}`);
+    }
+    const known = LOG_LEVEL_BUCKETS.flatMap(([, values]) => values);
+    select.push(`sum(CASE WHEN ${bucketExpr(known)} THEN 0 ELSE 1 END) AS "unknown"`);
+  } else {
+    select.push(`count(*) AS "logs"`);
+  }
+
+  return assemble({
+    select,
+    from: tableIdent(options),
+    where: prependCondition(`$__timeFilter(${time})`, whereChain(options.filters)),
+    groupBy: ['1'],
+    orderBy: ['1'],
   });
 }
 

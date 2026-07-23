@@ -1,8 +1,17 @@
-import { AdHocVariableFilter, CoreApp, DataQueryRequest, DataSourceInstanceSettings, TimeRange } from '@grafana/data';
+import {
+  AdHocVariableFilter,
+  CoreApp,
+  DataQueryRequest,
+  DataSourceInstanceSettings,
+  SupplementaryQueryType,
+  TimeRange,
+} from '@grafana/data';
 import { lastValueFrom, of } from 'rxjs';
 
 import {
   AggregateType,
+  BuilderMode,
+  ColumnHint,
   CrateDBBuilderQuery,
   CrateDBOptions,
   CrateDBQuery,
@@ -314,6 +323,18 @@ describe('CrateDBDatasource.variables (query-variable support)', () => {
     expect(frame.fields[0].values).toEqual(['node-0', 'node-1']);
   });
 
+  it('resolves a bare-string variable query, the shape generic SQL dashboards store', async () => {
+    const ds = makeDatasource();
+    withQueryResult(ds, { fields: [{ name: 'location', values: ['Berlin', 'Vienna'] }] });
+    const request = {
+      targets: ['SELECT DISTINCT location FROM doc.demo_metrics'],
+    } as unknown as DataQueryRequest<CrateDBVariableQuery>;
+
+    const response = await lastValueFrom(new CrateDBVariableSupport(ds).query(request));
+
+    expect(response.data[0].fields[0].values).toEqual(['Berlin', 'Vienna']);
+  });
+
   it('carries __text/__value pairs through into the frame', async () => {
     const ds = makeDatasource();
     withQueryResult(ds, {
@@ -357,6 +378,95 @@ describe('CrateDBDatasource.getDefaultQuery', () => {
     expect(query.builderOptions?.aggregates).toEqual([
       { aggregateType: AggregateType.Count, column: '*', alias: 'value' },
     ]);
+  });
+});
+
+describe('CrateDBDatasource supplementary queries (logs volume)', () => {
+  const logsBuilderQuery: CrateDBQuery = {
+    refId: 'A',
+    editorType: EditorType.Builder,
+    builderOptions: {
+      schema: 'doc',
+      table: 'demo_logs',
+      flavor: QueryFormat.Logs,
+      mode: BuilderMode.Simple,
+      columns: [
+        { column: 'ts', hint: ColumnHint.Time },
+        { column: 'message', hint: ColumnHint.LogMessage },
+        { column: 'level', hint: ColumnHint.LogLevel },
+      ],
+      aggregates: [],
+      groupBy: [],
+      filters: [],
+      orderBy: [],
+      limit: 1000,
+    },
+    rawSql: 'SELECT "ts" AS "time", "message" AS "body", "level" AS "level" FROM "doc"."demo_logs" ...',
+    format: QueryFormat.Logs,
+  };
+  const volumeOptions = { type: SupplementaryQueryType.LogsVolume } as const;
+
+  it('supports only LogsVolume', () => {
+    const ds = makeDatasource();
+    expect(ds.getSupportedSupplementaryQueryTypes()).toEqual([SupplementaryQueryType.LogsVolume]);
+    expect(ds.getSupplementaryQuery({ type: SupplementaryQueryType.LogsSample }, logsBuilderQuery)).toBeUndefined();
+  });
+
+  it('derives a severity-bucketed time series from a builder logs query', () => {
+    const ds = makeDatasource();
+
+    const volume = ds.getSupplementaryQuery(volumeOptions, logsBuilderQuery);
+
+    expect(volume).toMatchObject({ refId: 'log-volume-A', format: QueryFormat.Timeseries });
+    expect(volume?.rawSql).toContain('$__timeGroupAlias("ts", $__interval)');
+    expect(volume?.rawSql).toContain('AS "error"');
+    expect(volume?.rawSql).toContain('FROM "doc"."demo_logs"');
+  });
+
+  it('derives the histogram from hand-written logs SQL through the parser', () => {
+    const ds = makeDatasource();
+    const query: CrateDBQuery = {
+      refId: 'B',
+      rawSql:
+        'SELECT "ts" AS "time", "message" AS "body" FROM "doc"."demo_logs" WHERE $__timeFilter("ts") ORDER BY "ts" DESC LIMIT 500',
+      format: QueryFormat.Logs,
+    };
+
+    const volume = ds.getSupplementaryQuery(volumeOptions, query);
+
+    expect(volume?.rawSql).toContain('count(*) AS "logs"');
+    expect(volume?.rawSql).toContain('FROM "doc"."demo_logs"');
+  });
+
+  it('yields nothing for non-logs queries or SQL the parser cannot account for', () => {
+    const ds = makeDatasource();
+
+    expect(ds.getSupplementaryQuery(volumeOptions, templateQuery)).toBeUndefined();
+    expect(
+      ds.getSupplementaryQuery(volumeOptions, {
+        refId: 'C',
+        rawSql: 'SELECT l.ts AS time, l.msg AS body FROM logs l JOIN hosts h ON l.host = h.name',
+        format: QueryFormat.Logs,
+      })
+    ).toBeUndefined();
+  });
+
+  it('builds the supplementary request from visible logs targets only', () => {
+    const ds = makeDatasource();
+    const request = {
+      targets: [logsBuilderQuery, { ...templateQuery, refId: 'T' }, { ...logsBuilderQuery, refId: 'H', hide: true }],
+    } as DataQueryRequest<CrateDBQuery>;
+
+    const supplementary = ds.getSupplementaryRequest(SupplementaryQueryType.LogsVolume, request);
+
+    expect(supplementary?.targets.map((t) => t.refId)).toEqual(['log-volume-A']);
+    expect(supplementary?.hideFromInspector).toBe(true);
+    expect(ds.getSupplementaryRequest(SupplementaryQueryType.LogsSample, request)).toBeUndefined();
+    expect(
+      ds.getSupplementaryRequest(SupplementaryQueryType.LogsVolume, {
+        targets: [templateQuery],
+      } as DataQueryRequest<CrateDBQuery>)
+    ).toBeUndefined();
   });
 });
 

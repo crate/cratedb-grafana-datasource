@@ -28,6 +28,41 @@ export async function openSqlEditor(page: Page) {
   await waitForMonaco(page);
 }
 
+// Pick a table in the last query row's builder. Prefers typing + ArrowDown +
+// Enter (the floating option list can be overlapped by other rows' editors),
+// falls back to clicking the option, and retries — on a cold page either
+// commit path can be swallowed. Every attempt is verified against the input.
+export async function pickBuilderTable(page: Page, table: string) {
+  const input = page.getByPlaceholder('Table').last();
+  const option = page.getByRole('option', { name: table }).first();
+  const committed = () =>
+    expect(input)
+      .toHaveValue(table, { timeout: 2_000 })
+      .then(
+        () => true,
+        () => false
+      );
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await input.click();
+    await input.press('ControlOrMeta+A');
+    await input.pressSequentially(table);
+    await expect(option).toBeVisible({ timeout: 15_000 });
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    if (await committed()) {
+      return;
+    }
+    await input.click();
+    await option.click({ force: true }).catch(() => {});
+    if (await committed()) {
+      return;
+    }
+    await page.keyboard.press('Escape');
+  }
+  await expect(input).toHaveValue(table);
+}
+
 // Replace the editor contents with `sql`, leaving the cursor at the end.
 export async function setEditorSql(page: Page, sql: string) {
   const lines = page.locator('.monaco-editor .view-lines').first();
