@@ -17,9 +17,6 @@ import { TimeSeriesQueryBuilder } from './views/TimeSeriesQueryBuilder';
 
 // the visual builder: schema/table/flavor selection, a per-flavor clause editor,
 // and a preview of the generated SQL
-//
-// adapted from the ClickHouse datasource (Apache-2.0),
-// https://github.com/grafana/clickhouse-datasource; see NOTICE
 
 interface Props {
   datasource: CrateDBDatasource;

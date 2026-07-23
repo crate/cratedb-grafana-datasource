@@ -1,9 +1,6 @@
 // Package macros implements the Grafana SQL macros ($__timeFilter, ...) for
 // CrateDB, expanded backend-side via sqlutil.Interpolate. $__interval,
 // $__interval_ms, $__table and $__column come from sqlutil.DefaultMacros.
-//
-// Macro idioms adapted from the Redshift datasource (Apache-2.0),
-// https://github.com/grafana/redshift-datasource; see NOTICE.
 package macros
 
 import (

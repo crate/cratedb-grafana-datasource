@@ -2,9 +2,6 @@ import { TypedVariableModel } from '@grafana/data';
 
 // $__conditionalAll(cond, $var): keeps cond when the variable has a concrete
 // selection, drops to 1=1 on "All"; interpolated frontend-side, backend never sees it
-//
-// adapted from the ClickHouse datasource (Apache-2.0),
-// https://github.com/grafana/clickhouse-datasource; see NOTICE
 export function applyConditionalAll(rawQuery: string, templateVars: TypedVariableModel[]): string {
   if (!rawQuery) {
     return rawQuery;

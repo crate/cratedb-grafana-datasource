@@ -6,9 +6,6 @@ import { DataFrame, FieldType } from '@grafana/data';
 // is split here into one frame per level, the count field labeled with it.
 // Severities with no lines in the range are dropped rather than drawn as
 // zero-height bars.
-//
-// adapted from the ClickHouse datasource (Apache-2.0),
-// https://github.com/grafana/clickhouse-datasource; see NOTICE
 
 export function splitLogVolumeFrames(frames: DataFrame[], refIdPrefix: string): DataFrame[] {
   const result: DataFrame[] = [];

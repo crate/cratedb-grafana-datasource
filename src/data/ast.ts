@@ -3,9 +3,6 @@ import { From, parse, SelectFromStatement, Statement } from 'pgsql-ast-parser';
 // SQL analysis via pgsql-ast-parser (CrateDB speaks the postgres dialect). Macros
 // aren't valid SQL, so they're swapped for equal-length placeholders before parsing;
 // offsets stay aligned with the original, which is what gets spliced (never the copy).
-//
-// adapted from the ClickHouse datasource (Apache-2.0),
-// https://github.com/grafana/clickhouse-datasource; see NOTICE
 
 // equal-length placeholders for ${var}, $__macro, $var; $ before a letter/underscore
 // only, leaving $5 and $$ alone

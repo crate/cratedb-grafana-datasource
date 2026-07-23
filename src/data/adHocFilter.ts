@@ -6,9 +6,6 @@ import { escapeColumnRef, quoteLiteral } from './escape';
 // injects dashboard-wide ad-hoc filters into the query's own top-level WHERE
 // (constraining rows before GROUP BY), only when the query reads the table the
 // filter keys came from (keys are table.column pairs)
-//
-// adapted from the QuestDB Grafana plugin (Apache-2.0),
-// https://github.com/questdb/grafana-questdb-datasource; see NOTICE
 export class AdHocFilter {
   // getTagKeys emits un-prefixed table.column keys from this schema, so an
   // un-qualified table name (in a key or in the query) resolves against it

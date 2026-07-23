@@ -1,9 +1,6 @@
 // Package converters maps CrateDB's PostgreSQL wire types to Grafana frame
 // field types. pgx reports types via DatabaseTypeName() using pg names (INT8,
 // TIMESTAMPTZ, JSON, _INT4 for arrays); the rest fall through to sqlutil defaults.
-//
-// Converter table pattern adapted from the QuestDB Grafana plugin (Apache-2.0),
-// https://github.com/questdb/grafana-questdb-datasource; see NOTICE.
 package converters
 
 import (

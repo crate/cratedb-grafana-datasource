@@ -1,7 +1,5 @@
 package plugin
 
-// Connection flow adapted from the QuestDB Grafana plugin (Apache-2.0),
-// https://github.com/questdb/grafana-questdb-datasource; see NOTICE.
 // Uses pgx/v5, with TLS material injected via tls.Config rather than
 // lib/pq's sslinline extension.
 

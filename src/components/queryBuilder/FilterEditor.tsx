@@ -8,9 +8,6 @@ import { ColumnSelect } from './ColumnSelect';
 
 // filter-row editor: column, operator (narrowed by the column's kind), a value
 // editor matching the operator, and the AND/OR joiner with the previous row
-//
-// adapted from the ClickHouse datasource (Apache-2.0),
-// https://github.com/grafana/clickhouse-datasource; see NOTICE
 
 interface Props {
   columns: ColumnMeta[];

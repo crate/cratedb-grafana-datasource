@@ -18,9 +18,6 @@ import { escapeColumnRef, escapeIdentifier, quoteLiteral } from './escape';
 // identifier goes through escape.ts, so OBJECT['key'] subscripts survive and
 // reserved words stay inert. The output shapes mirror the cheat-sheet templates
 // in constants.ts.
-//
-// adapted from the ClickHouse datasource (Apache-2.0),
-// https://github.com/grafana/clickhouse-datasource; see NOTICE
 
 export const LOGS_DEFAULT_LIMIT = 1000;
 

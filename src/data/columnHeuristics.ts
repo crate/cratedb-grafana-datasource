@@ -5,9 +5,6 @@ import { columnKind } from './columnTypes';
 // builder's hinted pickers when a table is selected. A name match only counts
 // when the column's data type fits the role (time hint needs a timestamp/date
 // column, log roles need text).
-//
-// adapted from the ClickHouse datasource (Apache-2.0),
-// https://github.com/grafana/clickhouse-datasource; see NOTICE
 
 const HINT_NAMES: Record<ColumnHint, RegExp[]> = {
   [ColumnHint.Time]: [/^ts$/i, /^time$/i, /^timestamp$/i, /^@timestamp$/i, /^event_time$/i, /^log_time$/i, /^created_at$/i],

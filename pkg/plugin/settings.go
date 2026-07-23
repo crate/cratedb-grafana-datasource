@@ -1,8 +1,5 @@
 package plugin
 
-// Adapted from the QuestDB Grafana plugin (Apache-2.0),
-// https://github.com/questdb/grafana-questdb-datasource; see NOTICE.
-
 import (
 	"encoding/json"
 	"fmt"

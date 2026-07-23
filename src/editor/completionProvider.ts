@@ -1,5 +1,3 @@
-// completion provider wiring adapted from the Redshift datasource
-// (Apache-2.0), https://github.com/grafana/redshift-datasource; see NOTICE
 import {
   ColumnDefinition,
   getStandardSQLCompletionProvider,

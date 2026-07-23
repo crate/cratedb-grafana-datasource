@@ -18,8 +18,6 @@ export enum EditorType {
 }
 
 // ---- visual-builder query model -------------------------------------------
-// adapted from the ClickHouse datasource (Apache-2.0),
-// https://github.com/grafana/clickhouse-datasource; see NOTICE
 
 export enum BuilderMode {
   Simple = 'simple',

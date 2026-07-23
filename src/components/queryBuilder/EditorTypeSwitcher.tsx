@@ -14,9 +14,6 @@ import { BuilderOptions, CrateDBQuery, CrateDBSqlQuery, EditorType } from '../..
 // state in meta. SQL → Builder restores that stash when the SQL is untouched,
 // else re-derives the state through the SQL parser; only SQL neither the stash
 // nor the parser can account for asks before being replaced.
-//
-// adapted from the ClickHouse datasource (Apache-2.0),
-// https://github.com/grafana/clickhouse-datasource; see NOTICE
 
 interface Props {
   query: CrateDBQuery;
