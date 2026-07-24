@@ -34,7 +34,7 @@ jobs:
       contents: read
       pull-requests: write # is-compatible PR comment
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -56,7 +56,7 @@ jobs:
         run: make package
 
       - name: Upload plugin zip
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: plugin-zip
           path: |
@@ -65,7 +65,7 @@ jobs:
           retention-days: 7
 
       - name: Upload dist for the live jobs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
@@ -95,16 +95,16 @@ jobs:
         cratedb: ["6.3.4", "latest", "nightly"]
     continue-on-error: ${{ matrix.cratedb == 'nightly' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
       - name: Download built dist
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist/
@@ -132,14 +132,14 @@ jobs:
       matrix:
         grafana: ${{ github.event_name == 'pull_request' && fromJSON('["latest"]') || fromJSON('["12.3.0", "latest"]') }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - uses: ./.github/actions/setup
 
       - name: Download built dist
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist/
@@ -167,7 +167,7 @@ jobs:
 
       - name: Upload Playwright report
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report-grafana-${{ matrix.grafana }}
           path: playwright-report/
