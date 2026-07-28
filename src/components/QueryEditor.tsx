@@ -1,45 +1,51 @@
-import React, { ChangeEvent } from 'react';
-import { InlineField, Input, Stack } from '@grafana/ui';
+import React, { useEffect, useRef } from 'react';
+
 import { QueryEditorProps } from '@grafana/data';
-import { DataSource } from '../datasource';
-import { MyDataSourceOptions, MyQuery } from '../types';
+import { EditorRow, EditorRows } from '@grafana/plugin-ui';
 
-type Props = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
+import { generateSql } from '../data/sqlGenerator';
+import { CrateDBDatasource } from '../datasource';
+import { BuilderOptions, CrateDBOptions, CrateDBQuery, EditorType } from '../types';
+import { EditorTypeSwitcher } from './queryBuilder/EditorTypeSwitcher';
+import { QueryBuilder } from './queryBuilder/QueryBuilder';
+import { SqlEditor } from './SqlEditor';
 
-export function QueryEditor({ query, onChange, onRunQuery }: Props) {
-  const onQueryTextChange = (event: ChangeEvent<HTMLInputElement>) => {
-    onChange({ ...query, queryText: event.target.value });
+type Props = QueryEditorProps<CrateDBDatasource, CrateDBQuery, CrateDBOptions>;
+
+// shell around the two editing surfaces; the visual builder regenerates rawSql
+// on every edit, so the backend contract stays {rawSql, format} either way
+export function QueryEditor({ query, datasource, onChange, onRunQuery }: Props) {
+  const queryRef = useRef<CrateDBQuery>(query);
+  useEffect(() => {
+    queryRef.current = query;
+  }, [query]);
+
+  const onBuilderChange = (options: BuilderOptions, run = true) => {
+    const rawSql = generateSql(options);
+    onChange({
+      ...queryRef.current,
+      editorType: EditorType.Builder,
+      builderOptions: options,
+      rawSql,
+      // the flavor is the format; the SQL editor's Auto picker plays no part here
+      format: options.flavor,
+      selectedFormat: undefined,
+    });
+    if (run && rawSql) {
+      onRunQuery();
+    }
   };
-
-  const onConstantChange = (event: ChangeEvent<HTMLInputElement>) => {
-    onChange({ ...query, constant: parseFloat(event.target.value) });
-    // executes the query
-    onRunQuery();
-  };
-
-  const { queryText, constant } = query;
 
   return (
-    <Stack gap={0}>
-      <InlineField label="Constant">
-        <Input
-          id="query-editor-constant"
-          onChange={onConstantChange}
-          value={constant}
-          width={8}
-          type="number"
-          step="0.1"
-        />
-      </InlineField>
-      <InlineField label="Query Text" labelWidth={16} tooltip="Not used yet">
-        <Input
-          id="query-editor-query-text"
-          onChange={onQueryTextChange}
-          value={queryText || ''}
-          required
-          placeholder="Enter a query"
-        />
-      </InlineField>
-    </Stack>
+    <EditorRows>
+      <EditorRow>
+        <EditorTypeSwitcher query={query} datasource={datasource} onChange={onChange} onRunQuery={onRunQuery} />
+      </EditorRow>
+      {query.editorType === EditorType.Builder ? (
+        <QueryBuilder datasource={datasource} options={query.builderOptions} onChange={onBuilderChange} />
+      ) : (
+        <SqlEditor query={query} datasource={datasource} onChange={onChange} onRunQuery={onRunQuery} />
+      )}
+    </EditorRows>
   );
 }

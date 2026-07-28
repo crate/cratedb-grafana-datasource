@@ -1,217 +1,178 @@
+# PR validation: lint + unit tests + build (check), then container-based
+# integration and e2e tiers (live). Packaging and releasing live in cd.yml
+# (tag-driven) — CI produces no plugin zip.
+#
+# Self-owned workflow following the external-plugin pattern (e.g.
+# questdb/grafana-questdb-datasource) — the reusable grafana/plugin-ci-workflows
+# pipeline is Grafana-org-internal (custom runner labels, GAR/GCS infra) and
+# not usable from other orgs.
+#
+# The monthly cron catches drift in upstream images (crate/crate:latest,
+# grafana/grafana:latest) that PR-triggered runs would miss.
 name: CI
 
 on:
-  push:
-    branches:
-      - master
-      - main
   pull_request:
     branches:
-      - master
       - main
+  schedule:
+    - cron: "0 7 3 * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  build:
-    name: Build, lint and unit tests
+  check:
+    name: Lint, test, build
     runs-on: ubuntu-latest
-    outputs:
-      plugin-id: ${{ steps.metadata.outputs.plugin-id }}
-      plugin-version: ${{ steps.metadata.outputs.plugin-version }}
-      has-e2e: ${{ steps.check-for-e2e.outputs.has-e2e }}
-      has-backend: ${{ steps.check-for-backend.outputs.has-backend }}
-    env:
-      GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
+    permissions:
+      contents: read
+      pull-requests: write # is-compatible PR comment
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - name: Setup Node.js environment
-        uses: actions/setup-node@v6
-        with:
-          node-version: '22'
-          cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+      - uses: ./.github/actions/setup
 
-      - name: Check types
-        run: npm run typecheck
-      - name: Lint
-        run: npm run lint
-      - name: Unit tests
-        run: npm run test:ci
-      - name: Build frontend
-        run: npm run build
+      - name: Lint (gofmt, go vet, golangci-lint, actionlint, eslint, tsc)
+        run: make lint
 
-      - name: Check for backend
-        id: check-for-backend
-        run: |
-          if [ -f "Magefile.go" ]
-          then
-            echo "has-backend=true" >> $GITHUB_OUTPUT
-          fi
+      - name: Unit tests (go + jest)
+        run: make test
 
-      - name: Setup Go environment
-        if: steps.check-for-backend.outputs.has-backend == 'true'
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
+      - name: Build plugin (backend all platforms + frontend)
+        run: make build
 
-      - name: Lint backend
-        if: steps.check-for-backend.outputs.has-backend == 'true'
-        uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
-        with:
-          version: latest
-          args: ./...
+      # Convenience artifact: an installable build for test-driving the PR
+      # ("try the zip from this run") and continuous validation of the
+      # packaging path. Not a release — releases are cut by cd.yml on tags.
+      - name: Package plugin zip
+        run: make package
 
-      - name: Build backend
-        if: steps.check-for-backend.outputs.has-backend == 'true'
-        uses: magefile/mage-action@a662bd8c29d8106879588cfff83b2faf6e6f59db # v4.0.0
-        with:
-          version: latest
-          args: buildAll
-
-      - name: Test backend
-        if: steps.check-for-backend.outputs.has-backend == 'true'
-        uses: magefile/mage-action@a662bd8c29d8106879588cfff83b2faf6e6f59db # v4.0.0
-        with:
-          version: latest
-          args: test
-
-      - name: Check for E2E
-        id: check-for-e2e
-        run: |
-          if [ -f "playwright.config.ts" ]
-          then
-            echo "has-e2e=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Sign plugin
-        run: npm run sign
-        if: ${{ env.GRAFANA_ACCESS_POLICY_TOKEN != '' }}
-
-      - name: Get plugin metadata
-        id: metadata
-        run: |
-          sudo apt-get install jq
-
-          export GRAFANA_PLUGIN_ID=$(cat dist/plugin.json | jq -r .id)
-          export GRAFANA_PLUGIN_VERSION=$(cat dist/plugin.json | jq -r .info.version)
-          export GRAFANA_PLUGIN_ARTIFACT=${GRAFANA_PLUGIN_ID}-${GRAFANA_PLUGIN_VERSION}.zip
-
-          echo "plugin-id=${GRAFANA_PLUGIN_ID}" >> $GITHUB_OUTPUT
-          echo "plugin-version=${GRAFANA_PLUGIN_VERSION}" >> $GITHUB_OUTPUT
-          echo "archive=${GRAFANA_PLUGIN_ARTIFACT}" >> $GITHUB_OUTPUT
-
-      - name: Package plugin
-        id: package-plugin
-        run: |
-          mv dist ${PLUGIN_ID}
-          zip ${ARCHIVE} ${PLUGIN_ID} -r
-        env:
-          ARCHIVE: ${{ steps.metadata.outputs.archive }}
-          PLUGIN_ID: ${{ steps.metadata.outputs.plugin-id }}
-
-      - name: Check plugin.json
-        run: |
-          docker run --pull=always \
-            -v $PWD/${ARCHIVE}:/archive.zip \
-            grafana/plugin-validator-cli -analyzer=metadatavalid /archive.zip
-        env:
-          ARCHIVE: ${{ steps.metadata.outputs.archive }}
-
-      - name: Archive Build
+      - name: Upload plugin zip
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ steps.metadata.outputs.plugin-id }}-${{ steps.metadata.outputs.plugin-version }}
-          path: ${{ steps.metadata.outputs.plugin-id }}
-          retention-days: 5
+          name: plugin-zip
+          path: |
+            *.zip
+            *.zip.sha1
+          retention-days: 7
 
-  resolve-versions:
-    name: Resolve e2e images
-    runs-on: ubuntu-latest
-    timeout-minutes: 3
-    needs: build
-    if: ${{ needs.build.outputs.has-e2e == 'true' }}
-    outputs:
-      matrix: ${{ steps.resolve-versions.outputs.matrix }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - name: Upload dist for the live jobs
+        uses: actions/upload-artifact@v7
         with:
-          persist-credentials: false
+          name: dist
+          path: dist/
+          retention-days: 1
 
-      - name: Resolve Grafana E2E versions
-        id: resolve-versions
-        uses: grafana/plugin-actions/e2e-version@e2e-version/v2.0.0
+      # kept last on purpose: is-compatible runs its own actions/setup-node
+      # (Node 16) that then shadows this job's Node 22 for every later step, so
+      # any build/yarn step after it runs on the wrong Node
+      - name: Check @grafana/* API compatibility with latest Grafana
+        uses: grafana/plugin-actions/is-compatible@v1
+        with:
+          module: ./src/module.ts
+          comment-pr: "yes"
+          skip-comment-if-compatible: "yes"
+          fail-if-incompatible: "no"
+          targets: "@grafana/data,@grafana/ui,@grafana/runtime"
 
-  playwright-tests:
-    needs: [resolve-versions, build]
-    timeout-minutes: 15
+  live:
+    name: Integration + e2e (CrateDB ${{ matrix.cratedb }})
+    runs-on: ubuntu-latest
+    needs: check
     strategy:
       fail-fast: false
       matrix:
-        GRAFANA_IMAGE: ${{fromJson(needs.resolve-versions.outputs.matrix)}}
-    name: e2e test ${{ matrix.GRAFANA_IMAGE.name }}@${{ matrix.GRAFANA_IMAGE.VERSION }}
-    runs-on: ubuntu-latest
+        # Oldest supported release line, current stable, and tomorrow's
+        # CrateDB. Nightly failures are signal, not blockers.
+        cratedb: ["6.3.4", "latest", "nightly"]
+    continue-on-error: ${{ matrix.cratedb == 'nightly' }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - name: Download plugin
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Download built dist
         uses: actions/download-artifact@v8
         with:
-          path: dist
-          name: ${{ needs.build.outputs.plugin-id }}-${{ needs.build.outputs.plugin-version }}
+          name: dist
+          path: dist/
 
-      - name: Execute permissions on binary
-        if: needs.build.outputs.has-backend == 'true'
-        run: |
-          chmod +x ./dist/gpx_*
+      - name: Integration tests (in-process driver vs real CrateDB)
+        run: make test-integration CRATEDB_IMAGE=crate/crate:${{ matrix.cratedb }}
 
-      - name: Setup Node.js environment
-        uses: actions/setup-node@v6
+      - name: E2E tests (hermetic CrateDB + Grafana, dist/ mounted)
+        run: make e2e CRATEDB_IMAGE=crate/crate:${{ matrix.cratedb }}
+
+  browser-smoke:
+    # Playwright + @grafana/plugin-e2e against the compose dev stack. No secrets
+    # involved, so this also runs on forked PRs.
+    #
+    # Cost split: a pull_request runs only the @critical subset on current
+    # Grafana (fast feedback on the money paths); the monthly cron and manual
+    # dispatch run the whole suite across the version matrix — the plugin.json
+    # floor (React 18) and current stable (React 19) — which is where
+    # version-sensitive UI drift (e.g. the ad-hoc control move in 13.x) surfaces.
+    name: Browser tests (Grafana ${{ matrix.grafana }})
+    runs-on: ubuntu-latest
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        grafana: ${{ github.event_name == 'pull_request' && fromJSON('["latest"]') || fromJSON('["12.3.0", "latest"]') }}
+    steps:
+      - uses: actions/checkout@v7
         with:
-          node-version: '22'
-          cache: 'npm'
+          persist-credentials: false
 
-      - name: Install dev dependencies
-        run: npm ci
+      - uses: ./.github/actions/setup
 
-      - name: Start Grafana
-        run: |
-          docker compose pull
-          ANONYMOUS_AUTH_ENABLED=false DEVELOPMENT=false GRAFANA_VERSION=${{ matrix.GRAFANA_IMAGE.VERSION }} GRAFANA_IMAGE=${{ matrix.GRAFANA_IMAGE.NAME }} docker compose up -d
-
-      - name: Wait for grafana server
-        uses: grafana/plugin-actions/wait-for-grafana@wait-for-grafana/v1.0.2
+      - name: Download built dist
+        uses: actions/download-artifact@v8
         with:
-          url: http://localhost:3000/login
+          name: dist
+          path: dist/
 
-      - name: Install Playwright Browsers
-        run: npm exec playwright install chromium --with-deps
-
-      - name: Run Playwright tests
-        id: run-tests
-        run: npm run e2e
-
-      - name: Docker logs
-        if: ${{ always() && steps.run-tests.outcome == 'failure' }}
+      - name: Start dev stack
+        env:
+          GRAFANA_VERSION: ${{ matrix.grafana }}
         run: |
-          docker logs cratedb-cratedb-datasource >& grafana-server.log
+          chmod +x dist/gpx_cratedb_* 2>/dev/null || true
+          docker compose up -d --wait
 
-      - name: Stop grafana docker
+      - name: Seed demo data
+        run: ./scripts/seed.sh
+
+      - name: Install Playwright browsers
+        run: yarn playwright install --with-deps chromium
+
+      # PRs run the @critical subset; cron/dispatch run everything (empty grep).
+      - name: Run browser tests
+        env:
+          GREP: ${{ github.event_name == 'pull_request' && '--grep @critical' || '' }}
+        run: |
+          read -ra grep_args <<< "$GREP"
+          yarn e2e:browser "${grep_args[@]}"
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-grafana-${{ matrix.grafana }}
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Stop dev stack
+        if: always()
         run: docker compose down
-
-      # Uncomment this step to upload the server log to Github artifacts. Remember Github artifacts are public on the Internet if the repository is public.
-      # - name: Upload server log
-      #   uses: actions/upload-artifact@v4
-      #   if: ${{ always() && steps.run-tests.outcome == 'failure' }}
-      #   with:
-      #     name: ${{ matrix.GRAFANA_IMAGE.NAME }}-v${{ matrix.GRAFANA_IMAGE.VERSION }}-${{github.run_id}}-server-log
-      #     path: grafana-server.log
-      #     retention-days: 5

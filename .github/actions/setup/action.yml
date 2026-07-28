@@ -1,0 +1,26 @@
+name: Setup toolchain
+description: >-
+  Node (from .nvmrc) with yarn 4 via corepack, Go (from go.mod, with module
+  cache), and dependency installation via `make install`. Used by every job
+  that builds or tests; checkout must happen before this action runs.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7
+      with:
+        node-version-file: .nvmrc
+
+    - name: Enable corepack (yarn 4 via packageManager field)
+      run: corepack enable
+      shell: bash
+
+    - uses: actions/setup-go@v7
+      with:
+        go-version-file: go.mod
+
+    # Yarn 4 defaults to --immutable when CI is set, so this is a frozen
+    # install here and a normal one locally — same command both places.
+    - name: Install dependencies
+      run: make install
+      shell: bash

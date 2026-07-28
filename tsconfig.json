@@ -1,3 +1,17 @@
 {
-  "extends": "./.config/tsconfig.json"
+  "extends": "./.config/tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "."
+  },
+  "ts-node": {
+    "compilerOptions": {
+      "module": "commonjs",
+      // @grafana/tsconfig >=2 sets moduleResolution "bundler", which is invalid
+      // together with ts-node's commonjs module override (TS5095)
+      "moduleResolution": "node10",
+      "target": "es5",
+      "esModuleInterop": true
+    },
+    "transpileOnly": true
+  }
 }

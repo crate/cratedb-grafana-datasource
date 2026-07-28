@@ -1,0 +1,46 @@
+Grafana data source plugin for CrateDB
+Copyright 2013-2026 Crate.IO GmbH ("Crate")
+
+This product is a derivative work that adapts code from three Apache-2.0
+licensed Grafana data source plugins. The adapted areas and their upstreams:
+
+  * Visual query builder — the query model, SQL generation and column
+    heuristics (src/data/sqlGenerator.ts, src/data/columnHeuristics.ts,
+    src/data/ast.ts, src/data/conditionalAll.ts, src/data/logVolume.ts,
+    src/types.ts) and the editor components under
+    src/components/queryBuilder/ — adapted from the Official ClickHouse data
+    source for Grafana
+    (https://github.com/grafana/clickhouse-datasource, Apache-2.0),
+    Copyright Grafana Labs.
+
+  * SQL macros and the Monaco completion provider (pkg/macros/,
+    src/editor/completionProvider.ts) — adapted from the Amazon Redshift data
+    source plugin for Grafana
+    (https://github.com/grafana/redshift-datasource, Apache-2.0),
+    Copyright Grafana Labs.
+
+  * PostgreSQL wire-protocol connection layer, type converters and dashboard
+    ad-hoc filtering (pkg/plugin/, pkg/converters/, src/data/adHocFilter.ts)
+    — adapted from the QuestDB Grafana data source plugin
+    (https://github.com/questdb/grafana-questdb-datasource, Apache-2.0).
+
+The QuestDB plugin ships a NOTICE file; its attribution notices are reproduced
+here as required by the Apache License, Section 4(d):
+
+    QuestDB Grafana datasource plugin
+
+    Original work Copyright 2022-2023 Grafana Labs & Clickhouse
+    Derived work Copyright 2024 QuestDB
+
+    This product includes software developed at
+    Grafana Labs (https://grafana.com/).
+
+    The Initial Developer of some parts of the plugin, which are copied from,
+    derived from, or inspired by Official ClickHouse data source for Grafana
+    (https://github.com/grafana/clickhouse-datasource/), is Grafana Labs
+    (https://grafana.com/).
+
+    Copyright 2022-2023 Grafana Labs.
+
+This product includes no code from the Grafana core repository
+(https://github.com/grafana/grafana, AGPL-3.0).

@@ -1,0 +1,249 @@
+package plugin
+
+// Uses pgx/v5, with TLS material injected via tls.Config rather than
+// lib/pq's sslinline extension.
+
+import (
+	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"sync"
+	"time"
+
+	"github.com/grafana/grafana-plugin-sdk-go/backend"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
+	"github.com/grafana/grafana-plugin-sdk-go/build/buildinfo"
+	"github.com/grafana/grafana-plugin-sdk-go/data"
+	"github.com/grafana/grafana-plugin-sdk-go/data/sqlutil"
+	"github.com/grafana/sqlds/v5"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
+	"golang.org/x/net/proxy"
+
+	"github.com/crate/cratedb-grafana-datasource/pkg/converters"
+	"github.com/crate/cratedb-grafana-datasource/pkg/macros"
+)
+
+// PluginID is the Grafana plugin identifier (<org>-<name>-<type>).
+const PluginID = "cratedb-cratedb-datasource"
+
+// CrateDB implements sqlds.Driver (and sqlds.Completable, in completable.go).
+type CrateDB struct {
+	// mu guards db and defaultSchema: Connect writes them while resource-route
+	// handlers read them on other goroutines.
+	mu sync.RWMutex
+	// db is cached by Connect for the Completable introspection queries.
+	db *sql.DB
+	// defaultSchema is the autocomplete fallback when the frontend sends none.
+	defaultSchema string
+	// schemaCache fronts the introspection queries; TTL 0 disables it.
+	schemaCache schemaCache
+}
+
+// conn returns the cached introspection connection under the read lock.
+func (d *CrateDB) conn() *sql.DB {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.db
+}
+
+// schema returns the configured default schema under the read lock.
+func (d *CrateDB) schema() string {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.defaultSchema
+}
+
+func getClientVersion(ctx context.Context) string {
+	result := ""
+	if version := backend.UserAgentFromContext(ctx).GrafanaVersion(); version != "" {
+		result = fmt.Sprintf("grafana:%s;", version)
+	}
+	if info, err := buildinfo.GetBuildInfo(); err == nil {
+		result += fmt.Sprintf("%s:%s", PluginID, info.Version)
+	}
+	return result
+}
+
+// Connect opens a pgx-backed *sql.DB against CrateDB's PostgreSQL port and
+// caches it for the Completable introspection queries.
+func (d *CrateDB) Connect(ctx context.Context, config backend.DataSourceInstanceSettings, message json.RawMessage) (*sql.DB, error) {
+	logger := log.DefaultLogger.FromContext(ctx)
+	settings, err := LoadSettings(config)
+	if err != nil {
+		logger.Debug("Invalid settings found", "error", err)
+		return nil, err
+	}
+
+	db, err := d.open(ctx, config, settings)
+	if err != nil {
+		return nil, err
+	}
+
+	d.mu.Lock()
+	d.db = db
+	d.defaultSchema = settings.DefaultSchema
+	d.mu.Unlock()
+	ttl := time.Duration(settings.SchemaCacheTTLSeconds) * time.Second
+	if settings.DisableSchemaCache {
+		ttl = 0
+	}
+	d.schemaCache.reset(ttl)
+
+	logger.Debug("Connected to CrateDB", "server", settings.Server,
+		"port", settings.Port, "tlsMode", settings.TLSMode)
+	return db, nil
+}
+
+// open builds a pgx-backed *sql.DB from validated settings without touching the
+// driver's cached state (the health check opens and closes its own).
+func (d *CrateDB) open(ctx context.Context, config backend.DataSourceInstanceSettings, settings Settings) (*sql.DB, error) {
+	logger := log.DefaultLogger.FromContext(ctx)
+
+	cc, err := pgx.ParseConfig(GenerateDSN(settings))
+	if err != nil {
+		return nil, fmt.Errorf("could not parse connection config: %w", err)
+	}
+
+	// CrateDB selects the working schema via search_path; no per-database isolation
+	cc.RuntimeParams["search_path"] = settings.DefaultSchema
+	if version := getClientVersion(ctx); version != "" {
+		cc.RuntimeParams["application_name"] = version
+	}
+
+	if err := configureTLS(cc, settings); err != nil {
+		return nil, err
+	}
+
+	proxyClient, err := config.ProxyClient(ctx)
+	if err != nil {
+		logger.Error("Proxy client creation failed", "error", err)
+		return nil, err
+	}
+	if proxyClient != nil && proxyClient.SecureSocksProxyEnabled() {
+		dialer, err := proxyClient.NewSecureSocksProxyContextDialer()
+		if err != nil {
+			logger.Error("Secure socks proxy dialer creation failed", "error", err)
+			return nil, err
+		}
+		contextDialer, ok := dialer.(proxy.ContextDialer)
+		if !ok {
+			return nil, errors.New("secure socks proxy dialer is not a context dialer")
+		}
+		cc.DialFunc = contextDialer.DialContext
+	}
+
+	db := stdlib.OpenDB(*cc)
+	if settings.MaxOpenConnections > 0 {
+		db.SetMaxOpenConns(int(settings.MaxOpenConnections))
+	}
+	if settings.MaxIdleConnections > 0 {
+		db.SetMaxIdleConns(int(settings.MaxIdleConnections))
+	}
+	if settings.MaxConnectionLifetime > 0 {
+		db.SetConnMaxLifetime(time.Duration(settings.MaxConnectionLifetime) * time.Second)
+	}
+	return db, nil
+}
+
+// PreCheckHealth backs "Save & test" with a connect + ping whose failures pass
+// through ClassifyError, so the user sees an actionable message instead of a raw
+// SQLSTATE. nil hands over to the regular sqlds flow.
+func (d *CrateDB) PreCheckHealth(ctx context.Context, req *backend.CheckHealthRequest) *backend.CheckHealthResult {
+	if req == nil || req.PluginContext.DataSourceInstanceSettings == nil {
+		return nil
+	}
+	unhealthy := func(err error) *backend.CheckHealthResult {
+		return &backend.CheckHealthResult{
+			Status:  backend.HealthStatusError,
+			Message: ClassifyError(err).Error(),
+		}
+	}
+
+	settings, err := LoadSettings(*req.PluginContext.DataSourceInstanceSettings)
+	if err != nil {
+		return unhealthy(err)
+	}
+	db, err := d.open(ctx, *req.PluginContext.DataSourceInstanceSettings, settings)
+	if err != nil {
+		return unhealthy(err)
+	}
+	defer func() { _ = db.Close() }()
+
+	pingCtx, cancel := context.WithTimeout(ctx, settings.queryTimeout())
+	defer cancel()
+	if err := db.PingContext(pingCtx); err != nil {
+		return unhealthy(err)
+	}
+	return nil
+}
+
+// configureTLS injects inline PEM material from secure JSON into pgx's tls.Config
+// (pgx only loads certs from files). sslmode semantics survive: require is unverified,
+// verify-ca checks the CA, verify-full also the hostname.
+func configureTLS(cc *pgx.ConnConfig, settings Settings) error {
+	if settings.TLSMode == "disable" || settings.TLSMode == "" {
+		return nil
+	}
+	// file-path method: pgx already loaded sslrootcert/sslcert/sslkey from the
+	// DSN (see GenerateDSN); nothing to inject.
+	if settings.TLSConfigurationMethod == "file-path" {
+		return nil
+	}
+	// a client cert without its key (or vice versa) is unusable; reject it before
+	// touching the tls.Config
+	if (settings.TLSClientCert == "") != (settings.TLSClientKey == "") {
+		return errors.New("TLS client certificate and key must both be specified")
+	}
+	tlsConfig := cc.TLSConfig
+	if tlsConfig == nil {
+		tlsConfig = &tls.Config{} //nolint:gosec // verification level is governed by sslmode
+		cc.TLSConfig = tlsConfig
+	}
+	if settings.TLSCACert != "" {
+		pool := x509.NewCertPool()
+		if !pool.AppendCertsFromPEM([]byte(settings.TLSCACert)) {
+			return ErrInvalidCACertificate
+		}
+		tlsConfig.RootCAs = pool
+	}
+	if settings.TLSClientCert != "" {
+		cert, err := tls.X509KeyPair([]byte(settings.TLSClientCert), []byte(settings.TLSClientKey))
+		if err != nil {
+			return fmt.Errorf("could not load client certificate pair: %w", err)
+		}
+		tlsConfig.Certificates = []tls.Certificate{cert}
+	}
+	return nil
+}
+
+// Settings returns per-datasource driver behavior for sqlds.
+func (d *CrateDB) Settings(ctx context.Context, config backend.DataSourceInstanceSettings) sqlds.DriverSettings {
+	timeout := Settings{}.queryTimeout()
+	rowLimit := int64(0)
+	if settings, err := LoadSettings(config); err == nil {
+		timeout = settings.queryTimeout()
+		rowLimit = settings.RowLimit
+	}
+	return sqlds.DriverSettings{
+		Timeout:  timeout,
+		FillMode: &data.FillMissing{Mode: data.FillModeNull},
+		// RowLimit 0 falls through to GF_DATAPROXY_ROW_LIMIT / the Grafana
+		// instance's dataproxy.row_limit (see sqlds newRowLimit).
+		RowLimit: rowLimit,
+	}
+}
+
+// Macros returns the CrateDB macro set; see pkg/macros.
+func (d *CrateDB) Macros() sqlds.Macros {
+	return macros.Macros
+}
+
+// Converters returns the CrateDB type mapping; see pkg/converters.
+func (d *CrateDB) Converters() []sqlutil.Converter {
+	return converters.CrateDBConverters
+}

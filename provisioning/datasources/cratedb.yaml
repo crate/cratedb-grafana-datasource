@@ -1,0 +1,14 @@
+# Dev-stack datasource pointing at the compose cratedb service.
+apiVersion: 1
+
+datasources:
+  - name: CrateDB
+    type: cratedb-cratedb-datasource
+    uid: cratedb-dev
+    editable: true
+    jsonData:
+      server: cratedb
+      port: 5432
+      username: crate
+      defaultSchema: doc
+      tlsMode: disable

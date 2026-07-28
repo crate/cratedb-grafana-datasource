@@ -1,3 +1,3 @@
-## Project knowledge
+# Agent guide
 
-This repository contains a **Grafana plugin**. You must Read @./.config/AGENTS/instructions.md before doing changes.
+This repository's agent guidance lives in [`AGENTS.md`](./AGENTS.md). Read it before making changes.

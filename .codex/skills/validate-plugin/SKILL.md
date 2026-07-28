@@ -1,6 +1,6 @@
 ---
 name: validate-plugin
-description: validate a Grafana plugin using the official Grafana plugin validator
+description: Package dist/ and run the Grafana catalog plugin-validator on the CrateDB plugin
 ---
 
-@../../../.config/AGENTS/skills/validate-plugin.md
+@../../../docs/agents/validate-plugin.md

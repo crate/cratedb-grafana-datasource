@@ -1,0 +1,227 @@
+{
+  "title": "CrateDB Getting Started",
+  "uid": "cratedb-getting-started",
+  "description": "Worked example: temperature, humidity, and ingest logs for demo locations, on the safe query pattern (server-side time bucketing, so results scale with panel width).",
+  "tags": [
+    "cratedb",
+    "example"
+  ],
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 39,
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "DS_CRATEDB",
+        "label": "CrateDB datasource",
+        "type": "datasource",
+        "query": "cratedb-cratedb-datasource",
+        "current": {},
+        "hide": 0,
+        "refresh": 1
+      },
+      {
+        "name": "location",
+        "label": "Location",
+        "type": "query",
+        "datasource": {
+          "type": "cratedb-cratedb-datasource",
+          "uid": "${DS_CRATEDB}"
+        },
+        "query": "SELECT DISTINCT location FROM doc.demo_metrics ORDER BY 1",
+        "multi": true,
+        "includeAll": true,
+        "current": {},
+        "refresh": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "## CrateDB Getting Started\n\nWhat you're looking at: temperature, humidity, and ingest logs for three demo locations, plus event markers \u2014 a worked example of the query pattern this plugin encourages. Each chart aggregates server-side (`$__timeGroupAlias` + `$__timeFilter`) so the result set scales with panel width, not table size; *Latest raw readings* shows the underlying rows, including an expandable OBJECT `tags` column.\n\nThese panels run on the seeded `doc.demo_*` tables (`make seed` in the dev stack). **Point the queries at your own data to make it yours** \u2014 the editor's cheat sheet (book icon) documents every macro."
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Temperature by location",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 18,
+        "x": 0,
+        "y": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 0,
+          "rawSql": "SELECT\n  $__timeGroupAlias(\"ts\", $__interval),\n  location,\n  avg(temperature) AS temperature\nFROM doc.demo_metrics\nWHERE $__timeFilter(\"ts\")\n  AND $__conditionalAll(location IN ($location), $location)\nGROUP BY 1, location\nORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Rows in demo table",
+      "description": "Total rows in doc.demo_metrics \u2014 the charts above bucket these down to a few points per series.",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 18,
+        "y": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT count(*) AS rows FROM doc.demo_metrics"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Humidity by location",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 18,
+        "x": 0,
+        "y": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 0,
+          "rawSql": "SELECT\n  $__timeGroupAlias(\"ts\", $__interval),\n  location,\n  avg(humidity) AS humidity\nFROM doc.demo_metrics\nWHERE $__timeFilter(\"ts\")\n  AND $__conditionalAll(location IN ($location), $location)\nGROUP BY 1, location\nORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Latest raw readings",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 18,
+        "y": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT ts, location, temperature, humidity, tags FROM doc.demo_metrics WHERE $__timeFilter(\"ts\") ORDER BY ts DESC LIMIT 25"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "logs",
+      "title": "Demo logs (Logs format)",
+      "description": "Ingest logs from doc.demo_logs, shown with the Logs format \u2014 the level column drives line color.",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 23
+      },
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": false,
+        "sortOrder": "Descending",
+        "enableLogDetails": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 2,
+          "rawSql": "SELECT\n  \"ts\" AS time,\n  \"message\" AS body,\n  \"level\"\nFROM \"doc\".\"demo_logs\"\nWHERE $__timeFilter(\"ts\")\nORDER BY \"ts\" DESC\nLIMIT 1000"
+        }
+      ]
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "datasource": {
+          "type": "cratedb-cratedb-datasource",
+          "uid": "${DS_CRATEDB}"
+        },
+        "enable": true,
+        "iconColor": "purple",
+        "name": "Demo events",
+        "target": {
+          "refId": "Anno",
+          "format": 1,
+          "rawSql": "SELECT ts AS time, title AS text, array_to_string(tags, ',') AS tags FROM doc.demo_events WHERE $__timeFilter(ts)"
+        }
+      }
+    ]
+  }
+}

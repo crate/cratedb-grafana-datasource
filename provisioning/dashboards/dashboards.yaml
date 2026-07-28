@@ -1,0 +1,10 @@
+apiVersion: 1
+
+providers:
+  - name: cratedb-dashboards
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      # The dashboards shipped inside the plugin, mounted via dist/.
+      path: /var/lib/grafana/plugins/cratedb-cratedb-datasource/dashboards
