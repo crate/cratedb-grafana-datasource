@@ -20,14 +20,15 @@ variables.
    | Option | Default | Notes |
    |---|---|---|
    | Host URL | — | CrateDB node or load balancer as `host:port` (the PostgreSQL wire protocol port, usually 5432) |
-   | Default schema | `doc` | Used as `search_path`; CrateDB user tables live in `doc` |
+   | Default schema | `doc` | Used as `search_path`; `doc` is CrateDB's default schema if none is given at table creation, but tables can live in any schema |
    | Username | `crate` | |
    | Password | empty | Optional; CrateDB's Docker default is trust authentication |
    | TLS/SSL Mode | `disable` | `disable`, `require`, `verify-ca`, `verify-full` |
    | TLS/SSL Method | certificate content | Paste PEM content (stored encrypted), or give paths to certificate files readable by the Grafana server (`sslrootcert`/`sslcert`/`sslkey`) |
 
-   *Additional settings:* connection limits, timeouts, row limit (a guard against accidental
-   full-table scans), autocomplete cache TTL, secure SOCKS proxy.
+   *Additional settings:* connection limits, timeouts, a row limit (caps rows read back per
+   query — it doesn't stop CrateDB executing an expensive scan or aggregation server-side, only
+   how much of the result set reaches Grafana), autocomplete cache TTL, secure SOCKS proxy.
 
 3. Open the bundled **CrateDB Cluster Health** dashboard (provisioned with the plugin) for a
    view of nodes, heap, disk, shards, and query latency (no separate exporter), or start a
@@ -71,14 +72,14 @@ variables.
    LIMIT 1000
    ```
 
-## Why this plugin and not just the postgres datasource?
+## Why this plugin and not just the PostgreSQL data source?
 
 CrateDB works with Grafana's built-in PostgreSQL data source today, but that generic adapter
 drives itself from `pg_catalog` and PostgreSQL idioms CrateDB only partly shares. Pointed at
-CrateDB, this plugin does what the Postgres data source can't:
+CrateDB, this plugin does what the PostgreSQL data source can't:
 
 1. **Introspection that works on CrateDB.** Autocomplete and schema browsing read
-   `information_schema`, not the `pg_catalog` the Postgres data source relies on (and which
+   `information_schema`, not the `pg_catalog` the PostgreSQL data source relies on (and which
    CrateDB only partially emulates) — dependable schema/table/column completion, the `sys`
    schema for cluster monitoring, and a TTL cache so completion popups don't hammer the cluster.
    It imposes no CrateDB `parse_ident()` / `>= 6.3` floor (see Requirements).
@@ -88,7 +89,7 @@ CrateDB, this plugin does what the Postgres data source can't:
    alerting. A visual query builder that starts from this pattern (above), an in-editor macro
    cheat sheet, and bundled example dashboards come with it.
 3. **CrateDB container types, modeled.** `OBJECT` columns render as structured, expandable JSON,
-   and arrays, `GEO`, and `FLOAT_VECTOR` get defined handling — CrateDB types the Postgres data
+   and arrays, `GEO`, and `FLOAT_VECTOR` get defined handling — CrateDB types the PostgreSQL data
    source has no converter for.
 4. **Ad-hoc filters that only offer usable keys.** Filter keys come from `information_schema` and
    skip columns that can't form a CrateDB equality predicate (`OBJECT`, `GEO`, arrays) while
@@ -158,50 +159,16 @@ variable type. A dashboard-JSON variable of `"type": "adhoc"` works on every ver
 
 ## Development
 
-```bash
-make install   # yarn install + go mod download
-make build     # backend binaries (all platforms) + frontend bundle → dist/
-make check     # lint (gofmt, go vet, golangci-lint, actionlint, eslint, tsc) + unit tests
-make up        # dev stack: Grafana (:3000, anonymous admin) + CrateDB (:4200 HTTP, :5432 pg)
-make seed      # demo tables (metrics, logs, events) for the Getting Started dashboard
-```
-
-`make help` lists all targets (watch mode, signing, …). Three verification tiers beyond `check`
-(ARM hosts get the `nightly` CrateDB image automatically, since release images are amd64-only):
-
-```bash
-make test-integration  # in-process driver tests against a real CrateDB (testcontainers)
-make e2e               # deployed-plugin tests: boots CrateDB + Grafana with dist/ mounted,
-                       # exercises health, queries, macros and autocomplete over Grafana's API.
-                       # Needs `make build` first. Set GRAFANA_URL=http://localhost:3000 to
-                       # attach to a running `make up` stack instead (~0.5s).
-make e2e-browser       # Playwright smoke tests (config editor, query editor, bundled
-                       # dashboards): boots + seeds the compose stack, downloads Chromium
-                       # on first run
-```
-
-The Makefile handles the toolchain quirks: Yarn 4 is required by `@grafana/plugin-ui` and
-resolved via a pinned `npx` fallback when no local yarn 4 exists, and `mage` falls back to
-`go run` when not installed. Grafana ≥13 restricts anonymous auth to Viewer, so the admin
-APIs (and the e2e test) use `admin:admin`.
-
-CI (GitHub Actions) runs on every PR: lint, unit tests, build, integration and e2e across the
-CrateDB version matrix, and a `@critical` browser smoke on current Grafana — uploading an
-installable plugin zip per run. The full Grafana version matrix and browser suite run on a
-monthly cron. The verification tiers are described in
-[docs/architecture.md](https://github.com/crate/cratedb-grafana-datasource/blob/main/docs/architecture.md#9-verification),
-the release flow in
-[RELEASE.md](https://github.com/crate/cratedb-grafana-datasource/blob/main/RELEASE.md).
-
-Note: `src/img/logo.svg` is a placeholder; replace it with the official CrateDB brand asset
-before any release.
+Building, testing, the dev stack, and CI are covered in
+[DEVELOPMENT.md](https://github.com/crate/cratedb-grafana-datasource/blob/main/DEVELOPMENT.md).
 
 ## Contributing
 
 Issues and pull requests welcome; the issue forms ask for exactly the details that make
 triage fast (version triple, executed query). See
 [CONTRIBUTING.md](https://github.com/crate/cratedb-grafana-datasource/blob/main/CONTRIBUTING.md)
-for etiquette (CLA, PR conventions); everything technical is in [Development](#development) above.
+for etiquette (CLA, PR conventions); everything technical is in
+[DEVELOPMENT.md](https://github.com/crate/cratedb-grafana-datasource/blob/main/DEVELOPMENT.md).
 
 ## License
 

@@ -1,7 +1,7 @@
 # Contributing
 
 Thank you for your interest in contributing! This document covers contribution
-etiquette; **everything technical lives in the [README](README.md#development)**
+etiquette; **everything technical lives in [DEVELOPMENT.md](DEVELOPMENT.md)**
 (setup, build, test tiers, dev stack, CI, release flow) and the design rationale
 in [docs/architecture.md](docs/architecture.md).
 

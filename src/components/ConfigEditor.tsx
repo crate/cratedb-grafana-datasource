@@ -282,7 +282,7 @@ export function ConfigEditor(props: Props) {
           </Field>
           <Field
             label="Row limit"
-            description="Max rows read per query, guarding against full-table scans. Empty uses Grafana's dataproxy.row_limit."
+            description="Max rows read back per query; doesn't limit query cost server-side. Empty uses Grafana's dataproxy.row_limit."
           >
             <Input
               id="rowLimit"
