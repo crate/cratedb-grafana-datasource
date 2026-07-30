@@ -1,7 +1,7 @@
 import { MacroType } from '@grafana/plugin-ui';
 
 // macro metadata for autocomplete and the cheat sheet; keep in sync with
-// pkg/macros/macros.go and the tables in README.md / docs/architecture.md.
+// pkg/macros/macros.go and the table in docs/macros.md.
 // id (cheat sheet) always equals name (autocomplete), so it's derived below
 const DEFINITIONS = [
   {

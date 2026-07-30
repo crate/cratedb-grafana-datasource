@@ -13,7 +13,7 @@
 # plugin id prefix ("cratedb-") matches its slug, and the token is added as
 # a repository secret:
 # https://grafana.com/developers/plugin-tools/publish-a-plugin/sign-a-plugin
-# See docs/architecture.md, "Distribution & identity".
+# See RELEASE.md, "Signing (one-time setup)".
 name: Release
 
 on:

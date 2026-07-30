@@ -57,10 +57,12 @@ APIs (and the e2e test) use `admin:admin`.
 CI (GitHub Actions) runs on every PR: lint, unit tests, build, integration and e2e across the
 CrateDB version matrix, and a `@critical` browser smoke on current Grafana — uploading an
 installable plugin zip per run. The full Grafana version matrix and browser suite run on a
-monthly cron. The verification tiers are described in
-[docs/architecture.md](https://github.com/crate/cratedb-grafana-datasource/blob/main/docs/architecture.md#9-verification),
-the release flow in
+monthly cron. The release flow is in
 [RELEASE.md](https://github.com/crate/cratedb-grafana-datasource/blob/main/RELEASE.md).
+
+One gap the tiers do not close: client-certificate authentication is configurable (PEM content or
+file paths, in the UI and via provisioning) but no tier exercises a CrateDB HBA `method: cert`
+setup.
 
 Note: `src/img/logo.svg` is a placeholder; replace it with the official CrateDB brand asset
 before any release.
