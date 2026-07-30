@@ -1,11 +1,33 @@
-# Development stack: Grafana with the plugin loaded from ./dist (unsigned),
-# plus a single-node CrateDB.
-#
-# CrateDB service shape follows the E2E harness in
-# crate/cratedb-examples:application/grafana/compose.yml.
-# NOTE: CrateDB release images are amd64-only; on ARM machines run with
-#   CRATEDB_VERSION=nightly docker compose up
+# Self-contained stack: `docker compose up` on a fresh clone builds the plugin,
+# starts a single-node CrateDB, seeds the demo tables, and brings up Grafana with
+# both bundled dashboards populated. Docker is the only host requirement.
+
 services:
+  # One-shot: populates ./dist so Grafana has a plugin to load. Skips when a build
+  # is already there, so repeat `up` runs are cheap and `make build` output wins.
+  plugin-build:
+    build:
+      context: .
+      dockerfile: docker/plugin-build.Dockerfile
+    volumes:
+      - .:/src
+      # Container-local: the host's node_modules holds host-platform binaries.
+      - plugin-node-modules:/src/node_modules
+      - go-cache:/go
+      - yarn-cache:/yarn-cache
+
+  # One-shot: demo tables for the "CrateDB Getting Started" dashboard. Idempotent
+  # (tables are dropped and recreated), and Grafana waits for it so a first-time
+  # visitor never lands on empty panels.
+  seed:
+    image: curlimages/curl:latest
+    volumes:
+      - ./scripts:/scripts:ro
+    entrypoint: ["/scripts/seed.sh", "http://cratedb:4200"]
+    depends_on:
+      cratedb:
+        condition: service_healthy
+
   grafana:
     image: grafana/grafana:${GRAFANA_VERSION:-latest}
     ports:
@@ -21,9 +43,15 @@ services:
     depends_on:
       cratedb:
         condition: service_healthy
+      plugin-build:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
 
+  # `nightly` is the only multi-arch tag CrateDB publishes; release images are
+  # amd64-only. Pin a release on amd64 hosts with CRATEDB_VERSION=latest.
   cratedb:
-    image: crate/crate:${CRATEDB_VERSION:-latest}
+    image: crate/crate:${CRATEDB_VERSION:-nightly}
     ports:
       - "4200:4200"
       - "5432:5432"
@@ -33,3 +61,8 @@ services:
       interval: 5s
       timeout: 30s
       retries: 60
+
+volumes:
+  plugin-node-modules:
+  go-cache:
+  yarn-cache:

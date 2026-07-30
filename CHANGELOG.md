@@ -49,6 +49,9 @@ Initial release.
   exporter) and *CrateDB Getting Started* (the recommended query pattern plus an OBJECT
   column, a Logs-format panel, and an annotation query — all runnable against the dev
   stack's seeded demo tables).
+- **Turnkey demo stack**: `docker compose up` on a clone builds the plugin, starts CrateDB,
+  seeds the demo tables, and serves Grafana with the data source provisioned and both bundled
+  dashboards populated. Docker is the only host requirement.
 - **Cluster protection**: configurable row limit and a TTL cache for autocomplete
   introspection.
 - **Diagnostics**: actionable connection error messages (auth / TLS / network / timeout) on

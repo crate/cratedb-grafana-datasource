@@ -26,6 +26,18 @@ export default defineConfig<PluginOptions>({
     },
     {
       name: 'chromium',
+      testDir: './tests/smoke',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/admin.json',
+      },
+      dependencies: ['auth'],
+    },
+    // Catalog screenshots, run on demand by `make screenshots` — not part of
+    // the smoke suite.
+    {
+      name: 'screenshots',
+      testDir: './tests/screenshots',
       use: {
         ...devices['Desktop Chrome'],
         storageState: 'playwright/.auth/admin.json',

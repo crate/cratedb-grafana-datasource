@@ -132,21 +132,20 @@ e2e: ensure-dist ## Deployed-plugin tests vs CrateDB + Grafana (set GRAFANA_URL 
 	@chmod +x dist/gpx_cratedb_* 2>/dev/null || true
 	CRATEDB_IMAGE=$(CRATEDB_IMAGE) go test -tags=e2e -v -count=1 -timeout=10m ./pkg/plugin/
 
-# Boots (or reuses) the compose stack, seeds demo data, and drives a real
-# Grafana in headless Chromium via @grafana/plugin-e2e. Chromium is downloaded
-# on first run (~100 MB) — deliberately not part of `make install`.
+# Boots (or reuses) the compose stack — which seeds demo data itself — and drives
+# a real Grafana in headless Chromium via @grafana/plugin-e2e. Chromium is
+# downloaded on first run (~100 MB) — deliberately not part of `make install`.
 .PHONY: e2e-browser
 e2e-browser: ensure-dist ## Browser smoke tests vs the compose stack (Playwright)
 	@chmod +x dist/gpx_cratedb_* 2>/dev/null || true
 	CRATEDB_VERSION=$(CRATEDB_VERSION) docker compose up -d --build --wait
-	./scripts/seed.sh
 	$(YARN) playwright install chromium
 	$(YARN) e2e:browser
 
 ##@ Dev stack (Docker Compose)
 
 .PHONY: up
-up: ## Start Grafana (:3000) + CrateDB (:4200/:5432) with dist/ mounted
+up: ## Start Grafana (:3000) + CrateDB (:4200/:5432); builds dist/ and seeds if needed
 	CRATEDB_VERSION=$(CRATEDB_VERSION) docker compose up -d --build
 
 .PHONY: down
@@ -162,19 +161,19 @@ seed: ## Load demo data for the Getting Started dashboard into CrateDB
 	./scripts/seed.sh
 
 # Regenerates the catalog screenshots referenced by src/plugin.json from the
-# dev stack (started + seeded if needed). Kiosk-mode dashboard URLs render
-# anonymously. Editor views are not captured here: Monaco text does not
-# rasterize in headless Chromium (glyphs measure zero-width without the web
-# fonts), so those need a manual capture if ever wanted.
+# dev stack. Dashboards render anonymously from kiosk URLs; views that need a
+# session and interaction are driven by tests/screenshots. The SQL editor is
+# not captured anywhere: Monaco text does not rasterize in headless Chromium
+# (glyphs measure zero-width without the web fonts).
 .PHONY: screenshots
 screenshots: ## Regenerate src/img/screenshots/*.png from the dev stack
 	CRATEDB_VERSION=$(CRATEDB_VERSION) docker compose up -d --build --wait
-	./scripts/seed.sh
 	$(YARN) playwright install chromium
 	$(YARN) playwright screenshot --viewport-size=1600,1400 --wait-for-timeout=9000 \
 		'http://localhost:3000/d/cratedb-cluster-health?kiosk' src/img/screenshots/cluster-health.png
 	$(YARN) playwright screenshot --viewport-size=1600,1300 --wait-for-timeout=9000 \
 		'http://localhost:3000/d/cratedb-getting-started?kiosk' src/img/screenshots/getting-started.png
+	$(YARN) playwright test --project=screenshots
 
 ##@ Release
 

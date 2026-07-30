@@ -83,6 +83,10 @@ the edit that produced it or the problem a session just solved.
 - Schema introspection uses **`information_schema`**, not `pg_catalog` (CrateDB's `pg_catalog`
   emulation is partial). `sys.*` holds cluster-monitoring tables and is intentionally kept.
 - CrateDB has `OBJECT` and array types; auth defaults to **trust** (password optional).
+- Subtracting two timestamps yields an `INTERVAL`, which panels cannot plot — the `sys.jobs_log`
+  dashboard queries compute durations as `ended::bigint - started::bigint` instead.
+- CrateDB accepts plaintext connections even with `ssl.psql.enabled` unless HBA demands
+  `ssl: on`, so TLS mode is enforced client-side by sslmode (`configureTLS` in `driver.go`).
 
 ## Grafana docs
 
