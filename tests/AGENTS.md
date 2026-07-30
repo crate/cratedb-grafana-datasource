@@ -7,6 +7,10 @@ This plugin has **two** e2e tiers. Don't confuse them:
 - **In-process backend e2e** (`pkg/plugin/*_test.go`, `//go:build e2e`) — the Go driver against a
   real CrateDB via testcontainers. Run with `make e2e`. Not covered here.
 
+`tests/screenshots/` is a third Playwright project, not a test tier: it drives the same stack to
+regenerate the catalog images in `src/img/screenshots/`. It runs only from `make screenshots`, and
+the `chromium` project is pinned to `tests/smoke` so the smoke run never picks it up.
+
 ## Running the browser tests
 
 ```bash

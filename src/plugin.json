@@ -66,6 +66,7 @@
       }
     ],
     "screenshots": [
+      { "name": "Visual query builder: pick a table, get the CrateDB time-series query", "path": "img/screenshots/query-builder.png" },
       { "name": "Cluster health dashboard (sys schema)", "path": "img/screenshots/cluster-health.png" },
       { "name": "Getting Started dashboard: the time-series query pattern", "path": "img/screenshots/getting-started.png" }
     ],
