@@ -1,19 +1,14 @@
-# Release: tag push -> verify gate (build + integration + e2e) -> signed
-# plugin zip + DRAFT GitHub release via grafana/plugin-actions/build-plugin,
-# with the release body taken from the tagged CHANGELOG section.
+# Release: tag push -> verify gate (build + integration + e2e) -> plugin zip
+# + DRAFT GitHub release via grafana/plugin-actions/build-plugin, with the
+# release body taken from the tagged CHANGELOG section.
 #
 # Flow: bump package.json version + CHANGELOG in a normal PR, merge, then
 #   git tag vX.Y.Z && git push --tags
-# A human reviews and publishes the draft release, then submits the zip URL
-# + sha1 to the grafana.com catalog.
+# A human reviews and publishes the draft release.
 #
 # Signing: build-plugin skips signing when GRAFANA_ACCESS_POLICY_TOKEN is
-# absent (it warns and packages unsigned) — usable for beta releases today.
-# Proper signing activates once Crate.io's grafana.com org exists, the
-# plugin id prefix ("cratedb-") matches its slug, and the token is added as
-# a repository secret:
-# https://grafana.com/developers/plugin-tools/publish-a-plugin/sign-a-plugin
-# See RELEASE.md, "Signing (one-time setup)".
+# absent (it warns and packages unsigned), which is how releases ship.
+# Adding the secret activates signing. See RELEASE.md, "Distribution".
 name: Release
 
 on:
@@ -103,7 +98,7 @@ jobs:
         run: docker compose down
 
   release:
-    name: Build, sign, draft release
+    name: Build and draft release
     runs-on: ubuntu-latest
     needs: [verify, browser]
     permissions:
@@ -121,8 +116,7 @@ jobs:
           attestation: true
 
       # The same checks grafana.com runs on submission — malformed
-      # plugin.json, zip structure, unsigned manifest — caught here instead
-      # of during catalog review.
+      # plugin.json, zip structure, unsigned manifest.
       - name: Validate plugin archive
         run: |
           zips=(cratedb-cratedb-datasource-*.zip)

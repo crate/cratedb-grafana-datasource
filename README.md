@@ -61,9 +61,62 @@ column, a logs panel and annotations.
   `>= 6.3` floor applies only to Grafana's built-in PostgreSQL data source, whose query builder
   needs `parse_ident()`.)
 
+## Installation
+
+The plugin is not yet listed in the Grafana plugin catalog, so it installs from a release archive
+and Grafana has to be told to load it unsigned. That works on **self-hosted Grafana (OSS or
+Enterprise)**; **Grafana Cloud does not run unsigned plugins**, and offers no override.
+
+<details>
+<summary><b>Install on self-hosted Grafana</b></summary>
+
+1. Download the archive from [Releases](https://github.com/crate/cratedb-grafana-datasource/releases)
+   and extract it into Grafana's plugin directory (default `/var/lib/grafana/plugins`).
+
+2. Allow the plugin id — in `grafana.ini`:
+
+   ```ini
+   [plugins]
+   allow_loading_unsigned_plugins = cratedb-cratedb-datasource
+   ```
+
+   or, for the Docker image:
+
+   ```
+   GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=cratedb-cratedb-datasource
+   ```
+
+3. Restart Grafana.
+
+The plugin page carries an *unsigned* badge, and updates do not arrive through the Grafana UI —
+watch this repository's releases. Grafana's
+[plugin signatures](https://grafana.com/docs/grafana/latest/administration/plugin-management/plugin-sign/)
+documentation covers the mechanics.
+
+</details>
+
+<details>
+<summary><b>Why unsigned, and what about Grafana Cloud?</b></summary>
+
+Grafana's [plugin policy](https://grafana.com/legal/plugins/) places a plugin offered by a
+for-profit business at the *Commercial* signature level, which requires a paid Commercial Plugin
+Subscription with Grafana Labs. That isn't in place yet. Until it is, there are no signed builds,
+and so no Grafana Cloud support either.
+
+[Private signing](https://grafana.com/developers/plugin-tools/publish-a-plugin/sign-a-plugin) is
+tied to a single instance's `root_url` and accepts no wildcards, so no build can be pre-signed for
+everyone. Where a security policy demands a signature, sign the plugin against your own instance
+with a free Grafana Cloud token.
+
+If Grafana Cloud support matters to you, say so in an
+[issue](https://github.com/crate/cratedb-grafana-datasource/issues) — demand is what would justify
+a signed, catalog-listed release.
+
+</details>
+
 ## Getting started
 
-**1. Install the plugin** and restart Grafana.
+**1. [Install the plugin](#installation)** and restart Grafana.
 
 **2. Add the data source** at *Connections → Data sources → Add data source → CrateDB*.
 
