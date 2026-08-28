@@ -20,10 +20,10 @@ The tag triggers the release workflow, which:
 
 1. **Verifies** — tag matches `package.json`, full build, integration + e2e tests against a
    real CrateDB and Grafana.
-2. **Builds and signs** — `grafana/plugin-actions/build-plugin` produces
-   `cratedb-cratedb-datasource-X.Y.Z.zip` (+ `.sha1`, with build attestation). Signing uses the
-   `GRAFANA_ACCESS_POLICY_TOKEN` repository secret; when the secret is absent the zip is
-   packaged **unsigned** (fine for betas, unusable for catalog submission).
+2. **Builds** — `grafana/plugin-actions/build-plugin` produces
+   `cratedb-cratedb-datasource-X.Y.Z.zip` (+ `.sha1`, with build attestation). The zip is
+   **unsigned**: signing runs only when the `GRAFANA_ACCESS_POLICY_TOKEN` repository secret is
+   set, and there is none (see [Distribution](#distribution)).
 3. **Validates** — `@grafana/plugin-validator` runs the same checks grafana.com applies on
    submission.
 4. **Drafts** — a draft GitHub release with the zip and the tagged CHANGELOG section as notes.
@@ -37,17 +37,17 @@ from `package.json` — the version lives in exactly one place.
 
 Pre-1.0, minor bumps may include breaking changes; note them prominently in the CHANGELOG.
 
-## Signing (one-time setup)
+## Distribution
 
-Community-plugin signing requires:
+Releases are unsigned, and Grafana loads an unsigned plugin only where an admin allows the plugin
+id explicitly — self-hosted instances, never Grafana Cloud. The README's *Installation* section is
+what users follow.
 
-1. A [grafana.com](https://grafana.com) organization whose **slug matches the plugin id
-   prefix** (`cratedb-`).
-2. An access policy token with the `plugins:write` scope, created under that org:
-   <https://grafana.com/developers/plugin-tools/publish-a-plugin/sign-a-plugin>
-3. The token stored as the `GRAFANA_ACCESS_POLICY_TOKEN` repository secret.
-
-To sign locally instead (e.g. to inspect the signed artifact):
+Grafana signs a plugin offered by a for-profit business at the `commercial` level, which carries a
+paid Commercial Plugin Subscription ([plugin policy](https://grafana.com/legal/plugins/)). Signing
+would also need a [grafana.com](https://grafana.com) organization whose slug matches the plugin id
+prefix (`cratedb-`) and an access-policy token with the `plugins:write` scope stored as
+`GRAFANA_ACCESS_POLICY_TOKEN`. The tooling is already wired for that day:
 
 ```bash
 make build
@@ -55,24 +55,13 @@ GRAFANA_ACCESS_POLICY_TOKEN=... make sign
 make package
 ```
 
-## Catalog submission
-
-First release only; updates re-use the same listing.
-
-1. Publish the draft GitHub release so the zip URL is public.
-2. Submit at <https://grafana.com/plugins/submit> with the zip URL and its sha1
-   (both attached to the release).
-3. The review pipeline runs the plugin validator (already green in CI) plus a human review.
-
-Listing content comes from the plugin itself: `src/plugin.json` (description, keywords, links,
-screenshots) and the top of `README.md`. Review both before submitting.
-
 ## Testing the release pipeline on a fork
 
 The workflow can be exercised end to end without touching this repository:
 
 1. Fork the repo and enable GitHub Actions on the fork.
-2. (Optional) add a `GRAFANA_ACCESS_POLICY_TOKEN` secret — omit it to test the unsigned path.
+2. Push a tag; with no `GRAFANA_ACCESS_POLICY_TOKEN` secret the fork exercises the same unsigned
+   path as a real release.
 3. Push a pre-release tag to the fork: `git tag v0.0.1-fork.1 && git push fork v0.0.1-fork.1`.
 4. Inspect the draft release on the fork; delete the tag and draft when done.
 
@@ -84,4 +73,3 @@ The workflow can be exercised end to end without touching this repository:
 - [ ] `make validate` green locally (the same plugin-validator gate the release workflow runs)
 - [ ] Screenshots still match the current UI (`make screenshots` regenerates them)
 - [ ] Tag pushed; release workflow green; draft release reviewed and published
-- [ ] (First release) catalog submission filed
