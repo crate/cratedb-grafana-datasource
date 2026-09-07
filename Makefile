@@ -142,6 +142,17 @@ e2e-browser: ensure-dist ## Browser smoke tests vs the compose stack (Playwright
 	$(YARN) playwright install chromium
 	$(YARN) e2e:browser
 
+# Chrome-driven walk over every user-facing surface, written for a human to
+# review: it asserts what can be asserted and leaves a screenshot per step in
+# qa-artifacts/. QA=1 is what admits the project into the Playwright run, so an
+# unqualified `playwright test` (CI) never schedules it.
+.PHONY: qa
+qa: ensure-dist ## Manual-QA browser sweep; screenshots land in qa-artifacts/
+	@chmod +x dist/gpx_cratedb_* 2>/dev/null || true
+	CRATEDB_VERSION=$(CRATEDB_VERSION) docker compose up -d --build --wait
+	$(YARN) playwright install chromium
+	QA=1 $(YARN) playwright test --project=qa
+
 ##@ Dev stack (Docker Compose)
 
 .PHONY: up

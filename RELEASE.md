@@ -82,5 +82,7 @@ One-time items that gate the first public release:
 - [ ] `make check-version VERSION=X.Y.Z` passes on main
 - [ ] CI green on main (including the CrateDB version matrix)
 - [ ] `make validate` green locally (the same plugin-validator gate the release workflow runs)
+- [ ] `make qa` run and its `qa-artifacts/` screenshots read through, on the oldest supported
+      Grafana as well as the current one (`GRAFANA_VERSION=... make up` first)
 - [ ] Screenshots still match the current UI (`make screenshots` regenerates them)
 - [ ] Tag pushed; release workflow green; draft release reviewed and published

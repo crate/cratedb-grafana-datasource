@@ -23,6 +23,7 @@ attributions in `NOTICE` intact when you touch code adapted from them.
 | Driver tests vs real CrateDB (testcontainers) | `make test-integration` |
 | Deployed-plugin tests (CrateDB + Grafana) | `make e2e` |
 | Browser smoke tests (Playwright) | `make e2e-browser` |
+| Pre-release walk of every surface, screenshots to review | `make qa` |
 | Dev stack up / seed demo data | `make up` / `make seed` |
 | Package + run the catalog validator | `make validate` |
 

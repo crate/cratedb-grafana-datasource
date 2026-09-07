@@ -11,6 +11,19 @@ This plugin has **two** e2e tiers. Don't confuse them:
 regenerate the catalog images in `src/img/screenshots/`. It runs only from `make screenshots`, and
 the `chromium` project is pinned to `tests/smoke` so the smoke run never picks it up.
 
+`tests/qa/` is a fourth project, `make qa`: a slower walk over every user-facing surface in a real
+Chrome, written to be read as much as run. It asserts what can be asserted (no panel errors, no
+console or HTTP failures the plugin caused, health-check messages that name the actual problem) and
+leaves a screenshot per step under `qa-artifacts/` for a person to look through before a release.
+`QA=1` is what admits the project into the Playwright run, so CI — which runs `playwright test`
+unqualified — never schedules it.
+
+Two things bite in that suite. Grafana renders a panel only once it scrolls into view, so a
+screenshot or an error check taken without scrolling reports blank space for everything below the
+fold; `renderWholePage` in `tests/qa/qa.ts` handles it. And the bundled dashboards bind their
+datasource variable to the org default, so a spec that runs while some other datasource of this type
+exists must pin `var-DS_CRATEDB` in the URL.
+
 ## Running the browser tests
 
 ```bash
