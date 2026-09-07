@@ -151,6 +151,7 @@ qa: ensure-dist ## Manual-QA browser sweep; screenshots land in qa-artifacts/
 	@chmod +x dist/gpx_cratedb_* 2>/dev/null || true
 	CRATEDB_VERSION=$(CRATEDB_VERSION) docker compose up -d --build --wait
 	$(YARN) playwright install chromium
+	rm -rf qa-artifacts
 	QA=1 $(YARN) playwright test --project=qa
 
 ##@ Dev stack (Docker Compose)
