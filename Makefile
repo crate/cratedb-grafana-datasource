@@ -4,10 +4,10 @@
 
 # Yarn 4 is required by @grafana/plugin-ui (engines field; yarn 1 hard-fails).
 # If the local yarn is not v4 (or missing), fall back to a pinned one-shot via npx.
-YARN := $(shell yarn --version 2>/dev/null | grep -q '^4\.' && echo yarn || echo npx -y -p @yarnpkg/cli-dist@4.17.0 yarn)
+YARN := $(shell yarn --version 2>/dev/null | grep -q '^4\.' && echo yarn || echo npx -y -p @yarnpkg/cli-dist@4.18.0 yarn)
 
 # Mage drives the plugin SDK's backend build; fall back to go run if not installed.
-MAGE := $(shell command -v mage >/dev/null 2>&1 && echo mage || echo go run github.com/magefile/mage@v1.15.0)
+MAGE := $(shell command -v mage >/dev/null 2>&1 && echo mage || echo go run github.com/magefile/mage@v1.17.2)
 
 # CrateDB release images are amd64-only; default to nightly on ARM hosts.
 # Override explicitly with CRATEDB_IMAGE=crate/crate:<tag>.
@@ -78,7 +78,7 @@ lint: ## Lint everything (gofmt, go vet, golangci-lint, actionlint, eslint, tsc)
 	@fmt_out="$$(gofmt -l pkg/ Magefile.go)"; \
 	if [ -n "$$fmt_out" ]; then echo "$$fmt_out"; echo "gofmt: files need formatting (run 'make format')"; exit 1; fi
 	go vet ./pkg/...
-	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run ./pkg/...
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2 run ./pkg/...
 	go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 .github/workflows/*.yml
 	$(YARN) lint
 	$(YARN) typecheck
@@ -214,7 +214,7 @@ release-notes: ## Print the CHANGELOG section for VERSION (default: package.json
 validate: package ## Package dist/ and run the catalog plugin-validator on it
 	@id=$$(jq -r .id dist/plugin.json); \
 	version=$$(jq -r .info.version dist/plugin.json); \
-	npx --yes @grafana/plugin-validator@0.44.2 -sourceCodeUri "file://$$(pwd)" "$$id-$$version.zip"
+	npx --yes @grafana/plugin-validator@0.45.9 -sourceCodeUri "file://$$(pwd)" "$$id-$$version.zip"
 
 .PHONY: sign
 sign: ## Sign the plugin locally (@grafana/sign-plugin; needs policy token)

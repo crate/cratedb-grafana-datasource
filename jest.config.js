@@ -7,11 +7,15 @@ const { grafanaESModules, nodeModulesToTransform } = require('./.config/jest/uti
 
 module.exports = {
   ...baseConfig,
-  // ESM-only packages reached through @grafana/data (marked) and
-  // @grafana/ui's date pickers (react-calendar and friends)
+  // ESM-only packages reached through @grafana/data (marked, @react-hookz/web),
+  // @grafana/plugin-ui (@marcbachmann/cel-js) and @grafana/ui's date pickers
+  // (react-calendar and friends)
   transformIgnorePatterns: [
     nodeModulesToTransform([
       ...grafanaESModules,
+      '@marcbachmann/cel-js',
+      '@react-hookz/web',
+      '@ver0/deep-equal',
       'lodash-es',
       'marked',
       'react-calendar',

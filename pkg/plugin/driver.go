@@ -16,6 +16,7 @@ import (
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/useragent"
 	"github.com/grafana/grafana-plugin-sdk-go/build/buildinfo"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/grafana/grafana-plugin-sdk-go/data/sqlutil"
@@ -60,7 +61,7 @@ func (d *CrateDB) schema() string {
 
 func getClientVersion(ctx context.Context) string {
 	result := ""
-	if version := backend.UserAgentFromContext(ctx).GrafanaVersion(); version != "" {
+	if version := useragent.FromContext(ctx).GrafanaVersion(); version != "" {
 		result = fmt.Sprintf("grafana:%s;", version)
 	}
 	if info, err := buildinfo.GetBuildInfo(); err == nil {
