@@ -7,17 +7,20 @@ import { ColumnMeta, SelectedColumn } from '../../types';
 interface Props {
   columns: ColumnMeta[];
   value: SelectedColumn[];
+  exclude?: string[];
   onChange: (columns: SelectedColumn[]) => void;
 }
 
 // multi-column picker for the plain (unhinted) selections; existing aliases
 // survive reselection, and custom values keep OBJECT subscripts reachable
-export function ColumnsEditor({ columns, value, onChange }: Props) {
-  const options: Array<ComboboxOption<string>> = columns.map((column) => ({
-    label: column.name,
-    value: column.name,
-    description: column.type,
-  }));
+export function ColumnsEditor({ columns, value, exclude = [], onChange }: Props) {
+  const options: Array<ComboboxOption<string>> = columns
+    .filter((column) => !exclude.includes(column.name))
+    .map((column) => ({
+      label: column.name,
+      value: column.name,
+      description: column.type,
+    }));
   return (
     <MultiCombobox
       options={options}
@@ -27,6 +30,7 @@ export function ColumnsEditor({ columns, value, onChange }: Props) {
       }
       createCustomValue
       placeholder="All columns (*)"
+      width={30}
     />
   );
 }

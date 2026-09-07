@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 
 import { SelectableValue } from '@grafana/data';
 import { EditorField, EditorRow } from '@grafana/plugin-ui';
-import { RadioButtonGroup } from '@grafana/ui';
+import { RadioButtonGroup, Text } from '@grafana/ui';
 
 import { defaultBuilderOptions, generateSql, getColumnByHint } from '../../data/sqlGenerator';
 import { CrateDBDatasource } from '../../datasource';
@@ -31,7 +31,7 @@ const FLAVORS: Array<SelectableValue<Exclude<QueryFormat, QueryFormat.Auto>>> = 
 ];
 
 export function QueryBuilder({ datasource, options, onChange }: Props) {
-  const columns = useColumnMeta(datasource, options.schema, options.table);
+  const { columns, failed } = useColumnMeta(datasource, options.schema, options.table);
 
   // prefill the flavor's hinted columns (time/message/level) once per table and
   // flavor, so a cleared picker stays cleared
@@ -92,6 +92,13 @@ export function QueryBuilder({ datasource, options, onChange }: Props) {
       </EditorRow>
       {/* keyed so a table change remounts the editors, dropping any picker
           state (typed filter text) bound to the previous table */}
+      {failed && (
+        <EditorRow>
+          <Text color="secondary" italic>
+            Column lookup failed — the pickers still take a column name typed by hand.
+          </Text>
+        </EditorRow>
+      )}
       <View key={`${options.schema}.${options.table}`} columns={columns} options={options} onChange={onChange} />
       <EditorRow>
         <SqlPreview sql={generateSql(options)} />

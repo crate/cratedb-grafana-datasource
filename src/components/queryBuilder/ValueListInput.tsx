@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 
 import { Input } from '@grafana/ui';
 
@@ -16,8 +16,14 @@ interface Props {
 export function ValueListInput({ values, placeholder, width, onCommit }: Props) {
   const joined = values.join(', ');
   const [draft, setDraft] = useState(joined);
+  const [adopted, setAdopted] = useState(joined);
 
-  useEffect(() => setDraft(joined), [joined]);
+  // React's adjust-state-during-render pattern: the list changing under the
+  // editor (a row shifted by a delete) replaces the draft.
+  if (joined !== adopted) {
+    setAdopted(joined);
+    setDraft(joined);
+  }
 
   const commit = () =>
     onCommit(

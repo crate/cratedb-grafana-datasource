@@ -62,6 +62,11 @@ const BOOLEAN_VALUES: Array<ComboboxOption<string>> = [
   { label: 'false', value: 'false' },
 ];
 
+// The stored operator is SQL; only the one that isn't reads as prose.
+const OPERATOR_LABELS: Partial<Record<FilterOperator, string>> = {
+  [FilterOperator.WithinTimeRange]: 'Within dashboard time range',
+};
+
 function valueless(operator: FilterOperator): boolean {
   return NULL_OPERATORS.includes(operator) || operator === FilterOperator.WithinTimeRange;
 }
@@ -88,7 +93,13 @@ function ValueEditor({
   if (kind === 'boolean') {
     const value = Array.isArray(filter.value) ? undefined : filter.value;
     return (
-      <Combobox options={BOOLEAN_VALUES} value={value ?? null} onChange={(v) => onCommit(v.value)} width={12} />
+      <Combobox
+        options={BOOLEAN_VALUES}
+        value={value ?? null}
+        onChange={(v) => onCommit(v.value)}
+        placeholder="true / false"
+        width={12}
+      />
     );
   }
   const value = Array.isArray(filter.value) ? '' : (filter.value ?? '');
@@ -136,7 +147,10 @@ export function FilterEditor({ columns, value, onChange }: Props) {
             }
           />
           <Combobox
-            options={operatorsFor(effectiveKind(filter)).map((operator) => ({ label: operator, value: operator }))}
+            options={operatorsFor(effectiveKind(filter)).map((operator) => ({
+              label: OPERATOR_LABELS[operator] ?? operator,
+              value: operator,
+            }))}
             value={filter.operator}
             onChange={(selected) =>
               update(index, { operator: selected.value, ...(valueless(selected.value) ? { value: undefined } : {}) })

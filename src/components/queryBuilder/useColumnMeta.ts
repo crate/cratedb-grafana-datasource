@@ -10,10 +10,14 @@ const RETRY_DELAY_MS = 1500;
 
 // column metadata for the selected table; resolves to [] on persistent failure
 // so the pickers degrade to free-text entry (the same tolerance as
-// useCompletionData)
-export function useColumnMeta(datasource: CrateDBDatasource, schema: string, table: string): ColumnMeta[] {
+// useCompletionData), and reports that failure so the builder can say so
+export function useColumnMeta(
+  datasource: CrateDBDatasource,
+  schema: string,
+  table: string
+): { columns: ColumnMeta[]; failed: boolean } {
   // keyed by table so a stale result never shows for the current one
-  const [loaded, setLoaded] = useState<{ key: string; columns: ColumnMeta[] } | null>(null);
+  const [loaded, setLoaded] = useState<{ key: string; columns: ColumnMeta[]; failed: boolean } | null>(null);
   const key = `${schema}.${table}`;
 
   useEffect(() => {
@@ -25,7 +29,7 @@ export function useColumnMeta(datasource: CrateDBDatasource, schema: string, tab
       datasource.fetchColumnMeta(schema, table).then(
         (meta) => {
           if (!cancelled) {
-            setLoaded({ key: `${schema}.${table}`, columns: meta });
+            setLoaded({ key: `${schema}.${table}`, columns: meta, failed: false });
           }
         },
         () => {
@@ -39,7 +43,7 @@ export function useColumnMeta(datasource: CrateDBDatasource, schema: string, tab
               }
             }, RETRY_DELAY_MS);
           } else {
-            setLoaded({ key: `${schema}.${table}`, columns: [] });
+            setLoaded({ key: `${schema}.${table}`, columns: [], failed: true });
           }
         }
       );
@@ -50,5 +54,5 @@ export function useColumnMeta(datasource: CrateDBDatasource, schema: string, tab
     };
   }, [datasource, schema, table]);
 
-  return loaded?.key === key ? loaded.columns : [];
+  return loaded?.key === key ? { columns: loaded.columns, failed: loaded.failed } : { columns: [], failed: false };
 }
