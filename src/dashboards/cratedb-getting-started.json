@@ -20,7 +20,10 @@
         "label": "CrateDB datasource",
         "type": "datasource",
         "query": "cratedb-cratedb-datasource",
-        "current": {},
+        "current": {
+          "text": "default",
+          "value": "default"
+        },
         "hide": 0,
         "refresh": 1
       },
@@ -46,7 +49,7 @@
       "type": "text",
       "title": "",
       "gridPos": {
-        "h": 6,
+        "h": 5,
         "w": 24,
         "x": 0,
         "y": 0
@@ -66,7 +69,7 @@
       },
       "gridPos": {
         "h": 9,
-        "w": 18,
+        "w": 12,
         "x": 0,
         "y": 5
       },
@@ -85,36 +88,6 @@
       }
     },
     {
-      "id": 3,
-      "type": "stat",
-      "title": "Rows in demo table",
-      "description": "Total rows in doc.demo_metrics \u2014 the charts above bucket these down to a few points per series.",
-      "datasource": {
-        "type": "cratedb-cratedb-datasource",
-        "uid": "${DS_CRATEDB}"
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 6,
-        "x": 18,
-        "y": 5
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "format": 1,
-          "rawSql": "SELECT count(*) AS rows FROM doc.demo_metrics"
-        }
-      ],
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      }
-    },
-    {
       "id": 4,
       "type": "timeseries",
       "title": "Humidity by location",
@@ -124,9 +97,9 @@
       },
       "gridPos": {
         "h": 9,
-        "w": 18,
-        "x": 0,
-        "y": 14
+        "w": 12,
+        "x": 12,
+        "y": 5
       },
       "targets": [
         {
@@ -151,9 +124,9 @@
         "uid": "${DS_CRATEDB}"
       },
       "gridPos": {
-        "h": 9,
-        "w": 6,
-        "x": 18,
+        "h": 8,
+        "w": 18,
+        "x": 0,
         "y": 14
       },
       "targets": [
@@ -163,6 +136,45 @@
           "rawSql": "SELECT ts, location, temperature, humidity, tags FROM doc.demo_metrics WHERE $__timeFilter(\"ts\") ORDER BY ts DESC LIMIT 25"
         }
       ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Demo table rows",
+      "description": "Total rows in doc.demo_metrics \u2014 the charts above bucket these down to a few points per series.",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT count(*) AS rows FROM doc.demo_metrics"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      }
     },
     {
       "id": 6,
@@ -177,7 +189,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 23
+        "y": 22
       },
       "options": {
         "showTime": true,
