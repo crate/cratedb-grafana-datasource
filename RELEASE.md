@@ -65,9 +65,22 @@ The workflow can be exercised end to end without touching this repository:
 3. Push a pre-release tag to the fork: `git tag v0.0.1-fork.1 && git push fork v0.0.1-fork.1`.
 4. Inspect the draft release on the fork; delete the tag and draft when done.
 
+## Before the first tag
+
+One-time items that gate the first public release:
+
+- [ ] The repository is public
+- [ ] Repository description and topics are set, so the plugin is findable from GitHub search
+- [ ] The grafana.com organization slug question is answered: either Crate.io holds a verified org
+      whose slug matches the `cratedb-` plugin-id prefix and signing is turned on, or the release
+      ships unsigned deliberately (see [Distribution](#distribution))
+- [ ] `src/img/logo.svg` is the official CrateDB mark, not the placeholder
+
 ## Checklist
 
 - [ ] CHANGELOG section exists for the version (`make release-notes VERSION=X.Y.Z` prints it)
+- [ ] The CHANGELOG heading for the version no longer says `(unreleased)` (`make release-notes`
+      refuses it)
 - [ ] `make check-version VERSION=X.Y.Z` passes on main
 - [ ] CI green on main (including the CrateDB version matrix)
 - [ ] `make validate` green locally (the same plugin-validator gate the release workflow runs)

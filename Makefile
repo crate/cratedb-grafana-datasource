@@ -194,10 +194,12 @@ check-version: ## Assert VERSION=x.y.z matches package.json (release guard)
 # package.json) to stdout — the release workflow uses it as the GitHub
 # release body; run locally to preview it before tagging. Fails loudly when
 # the section is missing (a malformed "## x.y.z" heading would otherwise
-# ship a release with empty notes).
+# ship a release with empty notes) or still marked "(unreleased)".
 .PHONY: release-notes
 release-notes: ## Print the CHANGELOG section for VERSION (default: package.json)
 	@version="$(or $(VERSION),$(shell jq -r .version package.json))"; \
+	heading=$$(awk -v ver="$$version" ' \
+		$$0 ~ "^## " && $$2 == ver { print; exit }' CHANGELOG.md); \
 	notes=$$(awk -v ver="$$version" ' \
 		$$0 ~ "^## " { in_section = ($$2 == ver) ; next } \
 		in_section { print }' CHANGELOG.md); \
@@ -205,6 +207,11 @@ release-notes: ## Print the CHANGELOG section for VERSION (default: package.json
 		echo "error: no CHANGELOG.md section found for version $$version" >&2; \
 		exit 1; \
 	fi; \
+	case "$$heading" in \
+		*"(unreleased)"*) \
+			echo "error: CHANGELOG.md heading for $$version still says (unreleased); drop the marker before tagging" >&2; \
+			exit 1;; \
+	esac; \
 	printf '%s\n' "$$notes"
 
 # Mirrors the release workflow's validator gate: package dist/ and run the

@@ -64,5 +64,5 @@ One gap the tiers do not close: client-certificate authentication is configurabl
 file paths, in the UI and via provisioning) but no tier exercises a CrateDB HBA `method: cert`
 setup.
 
-Note: `src/img/logo.svg` is a placeholder; replace it with the official CrateDB brand asset
-before any release.
+`src/img/logo.svg` is a placeholder awaiting the official CrateDB brand asset; replacing it is a
+checklist item in [RELEASE.md](RELEASE.md#before-the-first-tag).

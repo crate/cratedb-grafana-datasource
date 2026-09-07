@@ -48,9 +48,9 @@ is missing, so you rarely install them yourself. See `CONTRIBUTING.md` for dev-e
 
 ## What lands in the code
 
-Everything left in the tree — comments, names, docstrings, test titles — must read as if the code
-had always been written that way. Document what the code **is** and the constraints it honors, never
-the edit that produced it or the problem a session just solved.
+Everything left in the tree must read as if the code had always been written that way, comments,
+names, docstrings and test titles included. Document what the code **is** and the constraints it
+honors, never the edit that produced it or the problem a session just solved.
 
 - **No change-narration.** Drop "now / before / previously", "X before Y so the old case can't
   happen", and any wording pitched at a reviewer of the diff. Litmus: if a line only makes sense to

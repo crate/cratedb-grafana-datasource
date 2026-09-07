@@ -22,8 +22,8 @@ SELECT "name" AS __text, "id" AS __value FROM "doc"."sensors" ORDER BY 1
 
 Following Grafana's built-in PostgreSQL data source:
 
-- **multi-select or *All*-capable variables** quote every value — `'Berlin','Vienna'` — so
-  they drop straight into an `IN (...)` list
+- **multi-select or *All*-capable variables** quote every value, producing `'Berlin','Vienna'`,
+  which drops straight into an `IN (...)` list
 - **single-value variables** stay unquoted, so they also work in identifier positions such as
   a table or column name (embedded quotes are still escaped)
 - numbers pass through unquoted
@@ -50,13 +50,22 @@ Ad-hoc filters work without setup. Keys are `table.column` pairs read from
 1000), and an active filter is injected into the `WHERE` clause of every query that reads
 that table.
 
-Columns whose type cannot back an equality predicate — `OBJECT`, `GEO_POINT`, `GEO_SHAPE` and
-arrays — are left out of the key list, so the picker only offers filters that produce valid
+A column whose type cannot back an equality predicate (`OBJECT`, `GEO_POINT`, `GEO_SHAPE`,
+arrays) is left out of the key list, so the picker only offers filters that produce valid
 CrateDB SQL. `OBJECT` sub-columns are kept, since those are individually comparable.
 
 On a large schema, add a dashboard **constant** or **textbox** variable named
 `cratedb_adhoc_tables` holding a comma-separated list of table names to narrow which tables
-feed the key picker. Names may be schema-qualified.
+feed the key picker. Ad-hoc filtering covers a single schema, the data source's default one, so
+a name qualified with that schema (`doc.metrics`) is accepted and any other qualifier matches
+nothing.
+
+### Where filters are not applied
+
+A filter is injected only into a query whose `FROM` is one plain table. Queries that join
+(explicitly or through a comma-separated list), use a CTE, a `UNION`, a subquery, or a variable
+as the table name run unfiltered. No panel notice marks the skip, so a dashboard mixing such
+queries with single-table ones will show some panels responding to the filter and others not.
 
 ### Adding the control
 
