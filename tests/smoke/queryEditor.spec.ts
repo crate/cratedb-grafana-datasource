@@ -29,7 +29,7 @@ test('new queries open in the builder; the SQL editor is one switch away', { tag
 test('the seeded getting-started dashboard returns data', async ({ gotoDashboardPage }) => {
   const dashboardPage = await gotoDashboardPage({ uid: 'cratedb-getting-started' });
 
-  const stat = dashboardPage.getPanelByTitle('Rows in demo table');
+  const stat = dashboardPage.getPanelByTitle('Demo table rows');
   await expect(stat.locator).toBeVisible();
   await expect(stat.locator).toContainText(/\d/);
 
