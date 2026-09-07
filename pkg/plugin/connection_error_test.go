@@ -11,6 +11,7 @@ import (
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -59,6 +60,18 @@ func TestClassifyError(t *testing.T) {
 	t.Run("plaintext server on a TLS connection", func(t *testing.T) {
 		err := ClassifyError(tls.RecordHeaderError{Msg: "first record does not look like a TLS handshake"})
 		assert.Contains(t, err.Error(), "TLS handshake failed")
+	})
+
+	t.Run("endpoint speaking another protocol", func(t *testing.T) {
+		err := ClassifyError(&pgproto3.ExceededMaxBodyLenErr{MaxExpectedBodyLen: 1073741822, ActualBodyLen: 1414811691})
+		assert.Contains(t, err.Error(), "does not speak the PostgreSQL wire protocol")
+		assert.Contains(t, err.Error(), "4200")
+	})
+
+	t.Run("server declines TLS", func(t *testing.T) {
+		err := ClassifyError(errors.New("tls error: server refused TLS connection"))
+		assert.Contains(t, err.Error(), "refused TLS")
+		assert.Contains(t, err.Error(), "ssl.psql.enabled")
 	})
 
 	t.Run("dns failure", func(t *testing.T) {
