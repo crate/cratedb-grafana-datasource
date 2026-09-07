@@ -451,13 +451,16 @@ function buildOptions(clauses: Clauses, macros: MacroMap): BuilderOptions | null
   const columnProjections = clauses.projections.filter(
     (projection): projection is Extract<Projection, { kind: 'column' }> => projection.kind === 'column'
   );
-  const aliased = (name: string) => columnProjections.find((projection) => projection.column.alias === name);
+  // What the frame calls the field: the alias when there is one, the column
+  // itself otherwise — a column already named "level" needs no alias.
+  const fieldNamed = (name: string) =>
+    columnProjections.find((projection) => (projection.column.alias ?? projection.column.column) === name);
 
-  // logs: time + body aliases (level optional), ordered by time descending
-  const timeProjection = aliased('time');
-  const bodyProjection = aliased('body');
+  // logs: time + body fields (level optional), ordered by time descending
+  const timeProjection = fieldNamed('time');
+  const bodyProjection = fieldNamed('body');
   if (timeProjection && bodyProjection && columnProjections.length === clauses.projections.length) {
-    const levelProjection = aliased('level');
+    const levelProjection = fieldNamed('level');
     const hinted: SelectedColumn[] = [
       { column: timeProjection.column.column, hint: ColumnHint.Time },
       { column: bodyProjection.column.column, hint: ColumnHint.LogMessage },

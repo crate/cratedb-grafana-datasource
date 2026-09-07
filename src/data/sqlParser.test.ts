@@ -151,10 +151,9 @@ describe('parseSqlToBuilderOptions on hand-written SQL', () => {
   });
 
   it('reads the logs template', () => {
-    // the template selects "level" bare; the builder aliases it, which is the
-    // same projection — so the conversion is faithful only via the alias form
-    const aliased = LOGS_QUERY_TEMPLATE.replace('"level"', '"level" AS "level"');
-    expect(parse(aliased)).toEqual({
+    // the template selects "level" bare, which names the field just as an
+    // alias would
+    expect(parse(LOGS_QUERY_TEMPLATE)).toEqual({
       schema: 'doc',
       table: 'demo_logs',
       flavor: QueryFormat.Logs,
