@@ -11,8 +11,16 @@ What is planned for 0.2, and why each item is not in 0.1. Issues and reactions o
 - **`$__searchFilter` in query variables.** The macro that narrows a variable's own list as you type
   it. The typed prefix has to reach the variable query, which the variable editor does not pass
   today.
-- **Value suggestions for the builder's `IN` filter.** Values are typed by hand. Suggesting them
-  means a `DISTINCT` lookup per column, which needs a cost guard first.
+- **Value suggestions for the builder's `IN` filter.** Values are typed as a comma-separated list,
+  which also means a value containing a comma cannot be expressed. Suggesting values means a
+  `DISTINCT` lookup per column, which needs a cost guard first.
+- **Query help inside the panel editor.** Grafana shows the cheat sheet in Explore and the README
+  in a panel's help modal, which is where a panel author is standing. Reaching them both means
+  shipping the same reference twice, as a component and as markdown, so it waits for the reference
+  to settle.
+- **An empty state for aggregate mode.** Switching a table query to aggregate mode with no
+  aggregation yet leaves the SQL a plain `SELECT *`, and nothing on screen says an aggregation is
+  what changes it.
 - **A SQL formatter in the raw editor.** The parser the plugin already uses can read the SQL back,
   but printing it re-renders macros, so a formatter has to be taught to leave them alone.
 
