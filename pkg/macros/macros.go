@@ -6,6 +6,7 @@ package macros
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,10 +28,17 @@ var Macros = sqlutil.Macros{
 	"toTime":              ToTime,
 	"timeGroup":           TimeGroup,
 	"timeGroupAlias":      TimeGroupAlias,
+	"time":                Time,
+	"timeEpoch":           TimeEpoch,
 	"interval_s":          IntervalS,
 	"unixEpochFilter":     UnixEpochFilter,
+	"unixEpochFrom":       UnixEpochFrom,
+	"unixEpochTo":         UnixEpochTo,
 	"unixEpochGroup":      UnixEpochGroup,
 	"unixEpochGroupAlias": UnixEpochGroupAlias,
+	"unixEpochNanoFilter": UnixEpochNanoFilter,
+	"unixEpochNanoFrom":   UnixEpochNanoFrom,
+	"unixEpochNanoTo":     UnixEpochNanoTo,
 	"conditionalAll":      ConditionalAll,
 }
 
@@ -121,14 +129,23 @@ func IntervalS(query *sqlutil.Query, args []string) (string, error) {
 	return fmt.Sprintf("%d", intervalSeconds(query.Interval)), nil
 }
 
-// TimeGroup expands $__timeGroup(column, interval) to a DATE_BIN bucket returning a TIMESTAMPTZ
+// TimeGroup expands $__timeGroup(column, interval[, fill]) to a DATE_BIN bucket
+// returning a TIMESTAMPTZ. DATE_BIN cannot fill gaps, so the emitted SQL is the
+// same with or without the fill argument and the response step honours it
+// (pkg/plugin/timeseries.go); validating it here keeps the error on the
+// interpolation path, where the user sees it.
 func TimeGroup(query *sqlutil.Query, args []string) (string, error) {
-	if len(args) != 2 {
-		return "", fmt.Errorf("%w: macro $__timeGroup needs time column and interval", sqlutil.ErrorBadArgumentCount)
+	if len(args) < 2 || len(args) > 3 {
+		return "", fmt.Errorf("%w: macro $__timeGroup needs a time column, an interval and an optional fill value (NULL, previous or a number)", sqlutil.ErrorBadArgumentCount)
 	}
 	interval, err := parseInterval(query, args[1])
 	if err != nil {
 		return "", err
+	}
+	if len(args) == 3 {
+		if _, err := ParseFill(args[2]); err != nil {
+			return "", err
+		}
 	}
 	return fmt.Sprintf("DATE_BIN('%s'::INTERVAL, %s, 0)", intervalLiteral(interval), args[0]), nil
 }
@@ -142,27 +159,90 @@ func TimeGroupAlias(query *sqlutil.Query, args []string) (string, error) {
 	return expr + ` AS "time"`, nil
 }
 
-// UnixEpochFilter expands $__unixEpochFilter(column) for BIGINT epoch-seconds columns.
-func UnixEpochFilter(query *sqlutil.Query, args []string) (string, error) {
+// Time expands $__time(column) to the column under the "time" alias.
+func Time(query *sqlutil.Query, args []string) (string, error) {
 	if len(args) != 1 {
 		return "", fmt.Errorf("%w: expected 1 argument, received %d", sqlutil.ErrorBadArgumentCount, len(args))
 	}
-	var (
-		column = args[0]
-		from   = query.TimeRange.From.UTC().Unix()
-		to     = query.TimeRange.To.UTC().Unix()
-	)
-	return fmt.Sprintf("%s >= %d AND %s <= %d", column, from, column, to), nil
+	return args[0] + ` AS "time"`, nil
 }
 
-// UnixEpochGroup expands $__unixEpochGroup(column, interval) for epoch-seconds columns.
+// TimeEpoch expands $__timeEpoch(column) to epoch seconds under the "time"
+// alias; the response step turns that numeric column into the frame's time field.
+func TimeEpoch(query *sqlutil.Query, args []string) (string, error) {
+	if len(args) != 1 {
+		return "", fmt.Errorf("%w: expected 1 argument, received %d", sqlutil.ErrorBadArgumentCount, len(args))
+	}
+	return fmt.Sprintf(`EXTRACT(EPOCH FROM %s) AS "time"`, args[0]), nil
+}
+
+// epochUnit renders an instant as a whole number at one resolution.
+type epochUnit func(time.Time) int64
+
+func epochSeconds(t time.Time) int64 { return t.UTC().Unix() }
+
+func epochNanoseconds(t time.Time) int64 { return t.UTC().UnixNano() }
+
+// epochFilter builds a `col >= from AND col <= to` condition over integer
+// timestamps at the unit's resolution.
+func epochFilter(query *sqlutil.Query, args []string, unit epochUnit) (string, error) {
+	if len(args) != 1 {
+		return "", fmt.Errorf("%w: expected 1 argument, received %d", sqlutil.ErrorBadArgumentCount, len(args))
+	}
+	column := args[0]
+	return fmt.Sprintf("%s >= %d AND %s <= %d",
+		column, unit(query.TimeRange.From), column, unit(query.TimeRange.To)), nil
+}
+
+func epochBound(t time.Time, unit epochUnit) string {
+	return strconv.FormatInt(unit(t), 10)
+}
+
+// UnixEpochFilter expands $__unixEpochFilter(column) for BIGINT epoch-seconds columns.
+func UnixEpochFilter(query *sqlutil.Query, args []string) (string, error) {
+	return epochFilter(query, args, epochSeconds)
+}
+
+// UnixEpochNanoFilter expands $__unixEpochNanoFilter(column) for BIGINT epoch-nanosecond columns.
+func UnixEpochNanoFilter(query *sqlutil.Query, args []string) (string, error) {
+	return epochFilter(query, args, epochNanoseconds)
+}
+
+// UnixEpochFrom expands $__unixEpochFrom() to the range start in epoch seconds.
+func UnixEpochFrom(query *sqlutil.Query, args []string) (string, error) {
+	return epochBound(query.TimeRange.From, epochSeconds), nil
+}
+
+// UnixEpochTo expands $__unixEpochTo() to the range end in epoch seconds.
+func UnixEpochTo(query *sqlutil.Query, args []string) (string, error) {
+	return epochBound(query.TimeRange.To, epochSeconds), nil
+}
+
+// UnixEpochNanoFrom expands $__unixEpochNanoFrom() to the range start in epoch nanoseconds.
+func UnixEpochNanoFrom(query *sqlutil.Query, args []string) (string, error) {
+	return epochBound(query.TimeRange.From, epochNanoseconds), nil
+}
+
+// UnixEpochNanoTo expands $__unixEpochNanoTo() to the range end in epoch nanoseconds.
+func UnixEpochNanoTo(query *sqlutil.Query, args []string) (string, error) {
+	return epochBound(query.TimeRange.To, epochNanoseconds), nil
+}
+
+// UnixEpochGroup expands $__unixEpochGroup(column, interval[, fill]) for
+// epoch-seconds columns. The fill argument is honoured on the response, like
+// $__timeGroup's.
 func UnixEpochGroup(query *sqlutil.Query, args []string) (string, error) {
-	if len(args) != 2 {
-		return "", fmt.Errorf("%w: macro $__unixEpochGroup needs time column and interval", sqlutil.ErrorBadArgumentCount)
+	if len(args) < 2 || len(args) > 3 {
+		return "", fmt.Errorf("%w: macro $__unixEpochGroup needs a time column, an interval and an optional fill value (NULL, previous or a number)", sqlutil.ErrorBadArgumentCount)
 	}
 	interval, err := parseInterval(query, args[1])
 	if err != nil {
 		return "", err
+	}
+	if len(args) == 3 {
+		if _, err := ParseFill(args[2]); err != nil {
+			return "", err
+		}
 	}
 	seconds := intervalSeconds(interval)
 	return fmt.Sprintf("FLOOR(%s/%d)*%d", args[0], seconds, seconds), nil

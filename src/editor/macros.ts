@@ -10,21 +10,23 @@ const DEFINITIONS = [
     args: ['column'],
     type: MacroType.Filter,
     description:
-      'Restrict a query to the panel\'s time range (millisecond precision) so CrateDB can prune partitions. Expands to e.g. "ts" >= \'2026-07-03T10:00:00.000Z\' AND "ts" <= \'2026-07-03T16:00:00.000Z\'.',
+      "Restrict a query to the panel's time range (millisecond precision) so CrateDB can prune partitions. Expands to e.g. \"ts\" >= '2026-07-03T10:00:00.000Z' AND \"ts\" <= '2026-07-03T16:00:00.000Z'.",
   },
   {
     name: '$__dateFilter(dateColumn)',
     text: '$__dateFilter',
     args: ['column'],
     type: MacroType.Filter,
-    description: "Restrict a DATE column to the panel's time range using date-only literals. Expands to e.g. \"day\" >= '2026-07-03' AND \"day\" <= '2026-07-04'.",
+    description:
+      "Restrict a DATE column to the panel's time range using date-only literals. Expands to e.g. \"day\" >= '2026-07-03' AND \"day\" <= '2026-07-04'.",
   },
   {
     name: '$__timeFrom()',
     text: '$__timeFrom',
     args: [],
     type: MacroType.Filter,
-    description: "Replaced by the start of the panel time range, millisecond precision, e.g. '2026-07-03T10:00:00.000Z'.",
+    description:
+      "Replaced by the start of the panel time range, millisecond precision, e.g. '2026-07-03T10:00:00.000Z'.",
   },
   {
     name: '$__timeTo()',
@@ -46,23 +48,36 @@ const DEFINITIONS = [
     text: '$__toTime',
     args: [],
     type: MacroType.Value,
-    description:
-      "Range end as a typed, millisecond-precision literal ('...'::TIMESTAMPTZ) for use inside expressions.",
+    description: "Range end as a typed, millisecond-precision literal ('...'::TIMESTAMPTZ) for use inside expressions.",
   },
   {
-    name: "$__timeGroup(timeColumn, '1m')",
+    name: "$__timeGroup(timeColumn, '1m'[, fill])",
     text: '$__timeGroup',
     args: ['column', "'1m'"],
     type: MacroType.Column,
     description:
-      'Bucket rows into time intervals server-side. Expands to DATE_BIN(\'60 seconds\'::INTERVAL, "ts", 0); pass $__interval to follow the panel resolution.',
+      'Bucket rows into time intervals server-side. Expands to DATE_BIN(\'60 seconds\'::INTERVAL, "ts", 0); pass $__interval to follow the panel resolution. A third argument of NULL, a number, or previous fills the buckets the query returned no rows for.',
   },
   {
-    name: "$__timeGroupAlias(timeColumn, '1m')",
+    name: "$__timeGroupAlias(timeColumn, '1m'[, fill])",
     text: '$__timeGroupAlias',
     args: ['column', "'1m'"],
     type: MacroType.Column,
     description: 'Like $__timeGroup, aliased to "time" (the column Grafana expects for time series).',
+  },
+  {
+    name: '$__time(timeColumn)',
+    text: '$__time',
+    args: ['column'],
+    type: MacroType.Column,
+    description: 'Alias a timestamp column as "time" without bucketing it.',
+  },
+  {
+    name: '$__timeEpoch(timeColumn)',
+    text: '$__timeEpoch',
+    args: ['column'],
+    type: MacroType.Column,
+    description: 'Read a timestamp column as epoch seconds under the "time" alias: EXTRACT(EPOCH FROM "ts") AS "time".',
   },
   {
     name: '$__unixEpochFilter(timeColumn)',
@@ -72,18 +87,54 @@ const DEFINITIONS = [
     description: 'Time range condition for BIGINT epoch-seconds columns, e.g. col >= 1783072800 AND col <= 1783094400.',
   },
   {
-    name: "$__unixEpochGroup(timeColumn, '1m')",
+    name: '$__unixEpochFrom()',
+    text: '$__unixEpochFrom',
+    args: [],
+    type: MacroType.Value,
+    description: 'Replaced by the start of the panel time range in epoch seconds, e.g. 1783072800.',
+  },
+  {
+    name: '$__unixEpochTo()',
+    text: '$__unixEpochTo',
+    args: [],
+    type: MacroType.Value,
+    description: 'Replaced by the end of the panel time range in epoch seconds, e.g. 1783094400.',
+  },
+  {
+    name: "$__unixEpochGroup(timeColumn, '1m'[, fill])",
     text: '$__unixEpochGroup',
     args: ['column', "'1m'"],
     type: MacroType.Column,
-    description: 'Bucketing for epoch-seconds columns: FLOOR(col/60)*60.',
+    description:
+      'Bucketing for epoch-seconds columns: FLOOR(col/60)*60. Takes the same optional fill argument as $__timeGroup.',
   },
   {
-    name: "$__unixEpochGroupAlias(timeColumn, '1m')",
+    name: "$__unixEpochGroupAlias(timeColumn, '1m'[, fill])",
     text: '$__unixEpochGroupAlias',
     args: ['column', "'1m'"],
     type: MacroType.Column,
     description: 'Like $__unixEpochGroup, aliased to "time".',
+  },
+  {
+    name: '$__unixEpochNanoFilter(timeColumn)',
+    text: '$__unixEpochNanoFilter',
+    args: ['column'],
+    type: MacroType.Filter,
+    description: 'Time range condition for BIGINT epoch-nanosecond columns.',
+  },
+  {
+    name: '$__unixEpochNanoFrom()',
+    text: '$__unixEpochNanoFrom',
+    args: [],
+    type: MacroType.Value,
+    description: 'Replaced by the start of the panel time range in epoch nanoseconds.',
+  },
+  {
+    name: '$__unixEpochNanoTo()',
+    text: '$__unixEpochNanoTo',
+    args: [],
+    type: MacroType.Value,
+    description: 'Replaced by the end of the panel time range in epoch nanoseconds.',
   },
   {
     name: '$__interval',

@@ -15,9 +15,15 @@ cheat sheet (book icon) lists them next to runnable query templates.
 | `$__fromTime` / `$__toTime` | the same boundary as a typed literal, `'<boundary>'::TIMESTAMPTZ` |
 | `$__timeGroup(col, 1m)` | `DATE_BIN('60 seconds'::INTERVAL, col, 0)` |
 | `$__timeGroupAlias(col, 1m)` | the same, plus ` AS "time"` |
+| `$__timeGroup(col, 1m, fill)` | the same SQL; the empty buckets are added to the result (see below) |
+| `$__time(col)` | `col AS "time"` |
+| `$__timeEpoch(col)` | `EXTRACT(EPOCH FROM col) AS "time"` |
 | `$__unixEpochFilter(col)` | `col >= <from-epoch> AND col <= <to-epoch>` — for `BIGINT` epoch-seconds columns |
+| `$__unixEpochFrom()` / `$__unixEpochTo()` | the panel range boundary in epoch seconds |
 | `$__unixEpochGroup(col, 1m)` | `FLOOR(col/60)*60` |
 | `$__unixEpochGroupAlias(col, 1m)` | the same, plus ` AS "time"` |
+| `$__unixEpochNanoFilter(col)` | `col >= <from-nanos> AND col <= <to-nanos>` — for `BIGINT` epoch-nanosecond columns |
+| `$__unixEpochNanoFrom()` / `$__unixEpochNanoTo()` | the panel range boundary in epoch nanoseconds |
 | `$__interval_s` | the panel interval as whole seconds (minimum 1) |
 | `$__conditionalAll(cond, $var)` | `cond` when the multi-select variable `$var` has a selection, `1=1` when it is on *All* |
 | `$__interval`, `$__interval_ms`, `$__table`, `$__column` | provided by the plugin SDK |
@@ -33,13 +39,26 @@ as `N seconds` and anything finer as `N milliseconds`, so a 200ms interval is no
 to one second.
 
 **A bare `$__timeGroup(...)` projection is shorthand for the aliased form.** When it sits
-directly before a comma in the select list, it is rewritten to `$__timeGroupAlias(...)`,
+directly before a comma in the outermost select list, it is rewritten to `$__timeGroupAlias(...)`,
 matching Grafana's built-in PostgreSQL data source. Anywhere else — inside `GROUP BY`, inside
 an expression — it expands as written.
 
 **`$__timeGroup` accepts `$__interval` as its width.** On the alerting path the literal
 `$__interval` reaches the backend unexpanded and resolves from the query's own interval, so
 the same query works in a panel and in an alert rule.
+
+**Gaps are filled on the response.** `DATE_BIN` can only bucket the rows a table holds, so a
+third argument to `$__timeGroup`, `$__timeGroupAlias`, `$__unixEpochGroup` or
+`$__unixEpochGroupAlias` leaves the emitted SQL unchanged and the backend adds the missing
+buckets to the result. Every bucket boundary between the panel range's start and end that the
+query returned no row for gets one row, carrying the fill value in every column but the
+timestamp; the rows the query did return keep their values. `NULL` leaves a hole the panel
+draws as a break, a number inserts that value, and `previous` repeats the last value before
+the gap.
+
+**A numeric `time` column becomes the time axis.** In a time-series query, a column named
+`time` holding integers or floats is read as epoch seconds, so `$__timeEpoch` and
+`$__unixEpochGroupAlias` plot without a cast.
 
 ## Time-series template
 
