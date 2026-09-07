@@ -295,7 +295,7 @@ export function ConfigEditor(props: Props) {
           </Field>
           <Field
             label="Row limit"
-            description="Max rows read back per query; doesn't limit query cost server-side. Empty uses Grafana's dataproxy.row_limit."
+            description="Max rows read back per query; doesn't limit query cost server-side. Empty uses Grafana's dataproxy.row_limit, 1000000 unless the server changed it."
           >
             <Input
               id="rowLimit"
@@ -303,7 +303,7 @@ export function ConfigEditor(props: Props) {
               width={40}
               type="number"
               value={jsonData.rowLimit ?? ''}
-              placeholder="dataproxy.row_limit"
+              placeholder="1000000"
               onChange={onNumberOption('rowLimit')}
             />
           </Field>
@@ -376,7 +376,10 @@ export function ConfigEditor(props: Props) {
               onChange={onNumberOption('maxConnectionLifetime')}
             />
           </Field>
-          <Field label="Connect timeout (seconds)">
+          <Field
+            label="Connect timeout (seconds)"
+            description="Seconds to wait for a new connection. Empty waits as long as the network allows."
+          >
             <Input
               id="timeout"
               name="timeout"
@@ -387,7 +390,10 @@ export function ConfigEditor(props: Props) {
               onChange={onNumberOption('timeout')}
             />
           </Field>
-          <Field label="Query timeout (seconds)">
+          <Field
+            label="Query timeout (seconds)"
+            description="Seconds a query may run before it's cancelled. Empty or 0 uses 60."
+          >
             <Input
               id="queryTimeout"
               name="queryTimeout"
