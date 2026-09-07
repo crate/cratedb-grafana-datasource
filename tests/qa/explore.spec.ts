@@ -25,6 +25,9 @@ test('Explore renders a time series and a table', async ({ page, shot, browserPr
   await shot('time-series');
   await expect(page.getByText(/Berlin|Vienna|Zurich/).first()).toBeVisible({ timeout: 30_000 });
 
+  // A row-shaped result needs the Table format; left on Time series, Grafana
+  // rejects it for not being sorted by time.
+  await page.getByRole('radio', { name: 'Table' }).last().click();
   await setEditorSql(page, 'SELECT ts, location, temperature FROM doc.demo_metrics WHERE $__timeFilter(ts) LIMIT 20');
   await run(page);
   await shot('table');
