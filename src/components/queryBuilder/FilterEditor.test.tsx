@@ -20,7 +20,25 @@ function stringFilter(value: string): Filter {
   return { column: 'city', operator: FilterOperator.Equals, value, condition: 'AND' };
 }
 
+function inFilter(values: string[]): Filter {
+  return { column: 'city', operator: FilterOperator.In, value: values, condition: 'AND' };
+}
+
 describe('FilterEditor', () => {
+  it('reads an IN list as comma-separated values', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={[inFilter(['Berlin'])]} />);
+
+    const input = screen.getByPlaceholderText('Values, comma separated') as HTMLInputElement;
+    expect(input.value).toBe('Berlin');
+
+    await user.click(input);
+    await user.keyboard(', Vienna');
+    await user.tab();
+
+    expect((screen.getByPlaceholderText('Values, comma separated') as HTMLInputElement).value).toBe('Berlin, Vienna');
+  });
+
   it('keeps each row bound to its own value when a middle row is deleted', async () => {
     const user = userEvent.setup();
     render(<Harness initial={[stringFilter('x'), stringFilter('y'), stringFilter('z')]} />);

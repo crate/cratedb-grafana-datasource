@@ -1,11 +1,12 @@
 import React from 'react';
 
-import { Button, Combobox, ComboboxOption, IconButton, MultiCombobox, RadioButtonGroup, Stack } from '@grafana/ui';
+import { Button, Combobox, ComboboxOption, IconButton, RadioButtonGroup, Stack } from '@grafana/ui';
 
 import { columnKind } from '../../data/columnTypes';
 import { ColumnKind, ColumnMeta, Filter, FilterOperator } from '../../types';
 import { ColumnSelect } from './ColumnSelect';
 import { CommitOnBlurInput } from './CommitOnBlurInput';
+import { ValueListInput } from './ValueListInput';
 
 // filter-row editor: column, operator (narrowed by the column's kind), a value
 // editor matching the operator, and the AND/OR joiner with the previous row
@@ -65,6 +66,7 @@ function valueless(operator: FilterOperator): boolean {
   return NULL_OPERATORS.includes(operator) || operator === FilterOperator.WithinTimeRange;
 }
 
+
 function ValueEditor({
   filter,
   kind,
@@ -80,14 +82,7 @@ function ValueEditor({
   if (filter.operator === FilterOperator.In || filter.operator === FilterOperator.NotIn) {
     const values = Array.isArray(filter.value) ? filter.value : filter.value ? [filter.value] : [];
     return (
-      <MultiCombobox
-        options={values.map((entry) => ({ label: entry, value: entry }))}
-        value={values}
-        onChange={(picked) => onCommit(picked.map((entry) => entry.value))}
-        createCustomValue
-        placeholder="Values"
-        width={30}
-      />
+      <ValueListInput values={values} placeholder="Values, comma separated" width={30} onCommit={onCommit} />
     );
   }
   if (kind === 'boolean') {
@@ -120,14 +115,17 @@ export function FilterEditor({ columns, value, onChange }: Props) {
   return (
     <Stack direction="column" gap={0.5}>
       {value.map((filter, index) => (
-        <Stack key={index} gap={0.5} alignItems="center">
-          {index > 0 && (
+        <Stack key={index} gap={0.5} alignItems="center" wrap="wrap">
+          {/* The first row has nothing to join, but it keeps the joiner's
+              footprint so every row's pickers line up. Hidden this way it is
+              also out of the tab order. */}
+          <div style={{ visibility: index > 0 ? 'visible' : 'hidden', flex: 'none' }}>
             <RadioButtonGroup
               options={CONDITIONS}
               value={filter.condition}
               onChange={(condition) => update(index, { condition })}
             />
-          )}
+          </div>
           <ColumnSelect
             columns={columns}
             kinds={['time', 'number', 'string', 'boolean']}

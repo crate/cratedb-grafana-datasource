@@ -6,10 +6,13 @@ import { TIMESERIES_QUERY_TEMPLATE, LOGS_QUERY_TEMPLATE } from '../constants';
 import { MACROS } from '../editor/macros';
 import { CrateDBQuery, QueryFormat } from '../types';
 
+// selectedFormat is what the picker reads; an example that set only format
+// left the picker on whatever the query had before.
 const LOGS_EXAMPLE: CrateDBQuery = {
   refId: 'A',
   rawSql: LOGS_QUERY_TEMPLATE,
   format: QueryFormat.Logs,
+  selectedFormat: QueryFormat.Logs,
 };
 
 const ANNOTATION_QUERY_EXAMPLE = `SELECT ts AS time, title AS text, array_to_string(tags, ',') AS tags FROM doc.demo_events WHERE $__timeFilter(ts)`;
@@ -35,6 +38,7 @@ export function CheatSheet({ onClickExample }: QueryEditorHelpProps<CrateDBQuery
             refId: 'A',
             rawSql: TIMESERIES_QUERY_TEMPLATE,
             format: QueryFormat.Timeseries,
+            selectedFormat: QueryFormat.Timeseries,
           })
         }
       >
@@ -49,20 +53,22 @@ export function CheatSheet({ onClickExample }: QueryEditorHelpProps<CrateDBQuery
       </pre>
 
       <h2>Macros</h2>
-      <table className="filter-table">
+      {/* Grafana's filter-table keeps cells on one line, which pushes the
+          descriptions past the help pane with nothing to scroll. */}
+      <table className="filter-table" style={{ width: '100%', tableLayout: 'fixed' }}>
         <thead>
           <tr>
-            <th>Macro</th>
+            <th style={{ width: '15em' }}>Macro</th>
             <th>Description</th>
           </tr>
         </thead>
         <tbody>
           {MACROS.map((macro) => (
             <tr key={macro.id}>
-              <td>
+              <td style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
                 <code>{macro.id}</code>
               </td>
-              <td>{macro.description}</td>
+              <td style={{ whiteSpace: 'normal' }}>{macro.description}</td>
             </tr>
           ))}
         </tbody>

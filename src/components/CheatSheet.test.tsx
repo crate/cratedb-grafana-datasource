@@ -28,7 +28,11 @@ describe('CheatSheet template buttons', () => {
     await userEvent.click(screen.getByRole('button', { name: /recommended template/i }));
 
     expect(onClickExample).toHaveBeenCalledWith(
-      expect.objectContaining({ rawSql: TIMESERIES_QUERY_TEMPLATE, format: QueryFormat.Timeseries })
+      expect.objectContaining({
+        rawSql: TIMESERIES_QUERY_TEMPLATE,
+        format: QueryFormat.Timeseries,
+        selectedFormat: QueryFormat.Timeseries,
+      })
     );
   });
 
@@ -38,7 +42,11 @@ describe('CheatSheet template buttons', () => {
     await userEvent.click(screen.getByRole('button', { name: /logs template/i }));
 
     expect(onClickExample).toHaveBeenCalledWith(
-      expect.objectContaining({ rawSql: LOGS_QUERY_TEMPLATE, format: QueryFormat.Logs })
+      expect.objectContaining({
+        rawSql: LOGS_QUERY_TEMPLATE,
+        format: QueryFormat.Logs,
+        selectedFormat: QueryFormat.Logs,
+      })
     );
   });
 });

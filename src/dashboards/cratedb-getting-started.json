@@ -133,7 +133,7 @@
         {
           "refId": "A",
           "format": 1,
-          "rawSql": "SELECT ts, location, temperature, humidity, tags FROM doc.demo_metrics WHERE $__timeFilter(\"ts\") ORDER BY ts DESC LIMIT 25"
+          "rawSql": "SELECT ts, location, temperature, humidity, tags\nFROM doc.demo_metrics\nWHERE $__timeFilter(\"ts\")\n  AND $__conditionalAll(location IN ($location), $location)\nORDER BY ts DESC\nLIMIT 25"
         }
       ]
     },
