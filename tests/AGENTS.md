@@ -8,8 +8,9 @@ This plugin has **two** e2e tiers. Don't confuse them:
   real CrateDB via testcontainers. Run with `make e2e`. Not covered here.
 
 `tests/screenshots/` is a third Playwright project, not a test tier: it drives the same stack to
-regenerate the catalog images in `src/img/screenshots/`. It runs only from `make screenshots`, and
-the `chromium` project is pinned to `tests/smoke` so the smoke run never picks it up.
+regenerate the catalog images in `src/img/screenshots/`. `SCREENSHOTS=1` admits it, which only
+`make screenshots` sets — a capture writes into `src/img/`, so no unqualified run should schedule
+it.
 
 `tests/qa/` is a fourth project, `make qa`: a slower walk over every user-facing surface in a real
 Chrome, written to be read as much as run. It asserts what can be asserted (no panel errors, no

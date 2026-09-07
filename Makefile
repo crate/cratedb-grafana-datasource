@@ -186,7 +186,7 @@ screenshots: ## Regenerate src/img/screenshots/*.png from the dev stack
 		'http://localhost:3000/d/cratedb-cluster-health?kiosk' src/img/screenshots/cluster-health.png
 	$(YARN) playwright screenshot --viewport-size=1600,1300 --wait-for-timeout=9000 \
 		'http://localhost:3000/d/cratedb-getting-started?kiosk' src/img/screenshots/getting-started.png
-	$(YARN) playwright test --project=screenshots
+	SCREENSHOTS=1 $(YARN) playwright test --project=screenshots
 
 ##@ Release
 
