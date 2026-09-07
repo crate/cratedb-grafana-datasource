@@ -1,9 +1,5 @@
 package plugin
 
-// Connection error classification: raw pgx/network errors are precise but unhelpful
-// on the config page. ClassifyError prefixes the category and likely fix;
-// MutateQueryError tags the source so Grafana attributes downstream failures right.
-
 import (
 	"context"
 	"crypto/tls"

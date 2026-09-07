@@ -1,7 +1,7 @@
+// Package plugin implements the CrateDB sqlds driver: the pgx connection and its
+// TLS configuration, the information_schema introspection behind the autocomplete
+// and ad-hoc resource routes, and connection-error classification.
 package plugin
-
-// Uses pgx/v5, with TLS material injected via tls.Config rather than
-// lib/pq's sslinline extension.
 
 import (
 	"context"
@@ -34,29 +34,36 @@ const PluginID = "cratedb-cratedb-datasource"
 
 // CrateDB implements sqlds.Driver (and sqlds.Completable, in completable.go).
 type CrateDB struct {
-	// mu guards db and defaultSchema: Connect writes them while resource-route
+	// mu guards the fields below: Connect writes them while resource-route
 	// handlers read them on other goroutines.
 	mu sync.RWMutex
 	// db is cached by Connect for the Completable introspection queries.
 	db *sql.DB
 	// defaultSchema is the autocomplete fallback when the frontend sends none.
 	defaultSchema string
+	// introspectionTimeout bounds the introspection queries, which run outside
+	// the sqlds query path and the timeout it applies.
+	introspectionTimeout time.Duration
 	// schemaCache fronts the introspection queries; TTL 0 disables it.
 	schemaCache schemaCache
 }
 
-// conn returns the cached introspection connection under the read lock.
 func (d *CrateDB) conn() *sql.DB {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 	return d.db
 }
 
-// schema returns the configured default schema under the read lock.
 func (d *CrateDB) schema() string {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 	return d.defaultSchema
+}
+
+func (d *CrateDB) timeout() time.Duration {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.introspectionTimeout
 }
 
 func getClientVersion(ctx context.Context) string {
@@ -88,6 +95,7 @@ func (d *CrateDB) Connect(ctx context.Context, config backend.DataSourceInstance
 	d.mu.Lock()
 	d.db = db
 	d.defaultSchema = settings.DefaultSchema
+	d.introspectionTimeout = settings.queryTimeout()
 	d.mu.Unlock()
 	ttl := time.Duration(settings.SchemaCacheTTLSeconds) * time.Second
 	if settings.DisableSchemaCache {
@@ -109,6 +117,7 @@ func (d *CrateDB) open(ctx context.Context, config backend.DataSourceInstanceSet
 	if err != nil {
 		return nil, fmt.Errorf("could not parse connection config: %w", err)
 	}
+	cc.Password = settings.Password
 
 	// CrateDB selects the working schema via search_path; no per-database isolation
 	cc.RuntimeParams["search_path"] = settings.DefaultSchema
@@ -139,15 +148,9 @@ func (d *CrateDB) open(ctx context.Context, config backend.DataSourceInstanceSet
 	}
 
 	db := stdlib.OpenDB(*cc)
-	if settings.MaxOpenConnections > 0 {
-		db.SetMaxOpenConns(int(settings.MaxOpenConnections))
-	}
-	if settings.MaxIdleConnections > 0 {
-		db.SetMaxIdleConns(int(settings.MaxIdleConnections))
-	}
-	if settings.MaxConnectionLifetime > 0 {
-		db.SetConnMaxLifetime(time.Duration(settings.MaxConnectionLifetime) * time.Second)
-	}
+	db.SetMaxOpenConns(int(settings.MaxOpenConnections))
+	db.SetMaxIdleConns(int(settings.MaxIdleConnections))
+	db.SetConnMaxLifetime(time.Duration(settings.MaxConnectionLifetime) * time.Second)
 	return db, nil
 }
 
@@ -211,6 +214,11 @@ func configureTLS(cc *pgx.ConnConfig, settings Settings) error {
 			return ErrInvalidCACertificate
 		}
 		tlsConfig.RootCAs = pool
+		if settings.TLSMode == "require" {
+			// libpq reads require plus a root certificate as verify-ca; pgx applies
+			// that only when the CA arrives as a file path.
+			tlsConfig.VerifyPeerCertificate = verifyChainOnly(tlsConfig)
+		}
 	}
 	if settings.TLSClientCert != "" {
 		cert, err := tls.X509KeyPair([]byte(settings.TLSClientCert), []byte(settings.TLSClientKey))
@@ -220,6 +228,30 @@ func configureTLS(cc *pgx.ConnConfig, settings Settings) error {
 		tlsConfig.Certificates = []tls.Certificate{cert}
 	}
 	return nil
+}
+
+// verifyChainOnly checks the server chain against tlsConfig.RootCAs and skips
+// hostname verification, the check pgx installs for sslmode=verify-ca.
+func verifyChainOnly(tlsConfig *tls.Config) func([][]byte, [][]*x509.Certificate) error {
+	return func(certificates [][]byte, _ [][]*x509.Certificate) error {
+		certs := make([]*x509.Certificate, len(certificates))
+		for i, asn1Data := range certificates {
+			cert, err := x509.ParseCertificate(asn1Data)
+			if err != nil {
+				return fmt.Errorf("could not parse certificate from server: %w", err)
+			}
+			certs[i] = cert
+		}
+		opts := x509.VerifyOptions{
+			Roots:         tlsConfig.RootCAs,
+			Intermediates: x509.NewCertPool(),
+		}
+		for _, cert := range certs[1:] {
+			opts.Intermediates.AddCert(cert)
+		}
+		_, err := certs[0].Verify(opts)
+		return err
+	}
 }
 
 // Settings returns per-datasource driver behavior for sqlds.

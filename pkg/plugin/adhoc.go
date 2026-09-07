@@ -1,8 +1,5 @@
 package plugin
 
-// /adhoc-keys resource route: the table.column pairs of one schema an ad-hoc filter
-// can meaningfully target. Registered via sqlds.CustomRoutes in pkg/main.go.
-
 import (
 	"context"
 	"encoding/json"

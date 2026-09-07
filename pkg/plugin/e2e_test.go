@@ -11,8 +11,8 @@
 //     already-running compose stack:
 //     GRAFANA_URL=http://localhost:3000 go test -tags=e2e ./pkg/plugin/
 //
-// Not covered: alert-rule evaluation (the backend $__interval path it needs IS
-// covered below), the TLS matrix (needs an SSL CrateDB), and Monaco rendering
+// Not covered: alert-rule evaluation end to end (its backend $__interval path is
+// exercised below), the TLS matrix (needs an SSL CrateDB), and Monaco rendering
 // (see tests/smoke/).
 package plugin
 

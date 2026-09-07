@@ -1,9 +1,7 @@
+// The /column-meta route carries data types alongside column names, which the
+// query builder needs to pick default time and log columns and to shape filter
+// value editors; sqlds' own /columns route is names only.
 package plugin
-
-// /column-meta resource route: column names with their CrateDB data types, which
-// the query builder needs to pick default time/log columns and shape filter value
-// editors. Registered via sqlds.CustomRoutes in pkg/main.go. The names-only
-// /columns route stays as sqlds defines it for autocomplete.
 
 import (
 	"context"
@@ -54,6 +52,8 @@ func (d *CrateDB) ColumnMeta(ctx context.Context, schema, table string) ([]colum
 	if cached := d.schemaCache.get(key); cached != nil {
 		return decodePairs(cached), nil
 	}
+	ctx, cancel := context.WithTimeout(ctx, d.timeout())
+	defer cancel()
 	rows, err := db.QueryContext(ctx, columnMetaQuery, schema, table)
 	if err != nil {
 		return nil, err

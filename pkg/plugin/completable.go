@@ -1,7 +1,6 @@
+// The autocomplete routes read information_schema; CrateDB's pg_catalog emulation
+// is partial.
 package plugin
-
-// sqlds.Completable: powers the /schemas, /tables and /columns autocomplete routes.
-// Targets information_schema, not pg_catalog (CrateDB's pg_catalog emulation is partial).
 
 import (
 	"context"
@@ -61,6 +60,8 @@ func (d *CrateDB) queryStrings(ctx context.Context, query string, args ...interf
 	if cached := d.schemaCache.get(key); cached != nil {
 		return cached, nil
 	}
+	ctx, cancel := context.WithTimeout(ctx, d.timeout())
+	defer cancel()
 	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
