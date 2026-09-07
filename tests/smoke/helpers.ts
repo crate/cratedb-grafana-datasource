@@ -80,7 +80,7 @@ export async function openSuggestions(page: Page): Promise<string[]> {
 }
 
 // Assert every panel on the current dashboard rendered without an error icon.
-// Iterates the panel titles found in the DOM so it can't silently pass on zero.
+// The title list is the caller's; the length guard keeps an empty list from passing vacuously.
 export async function expectAllPanelsHealthy(page: Page, titles: string[]) {
   expect(titles.length).toBeGreaterThan(0);
   for (const title of titles) {

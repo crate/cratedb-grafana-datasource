@@ -337,7 +337,7 @@ export function ConfigEditor(props: Props) {
               width={40}
               type="number"
               value={jsonData.maxOpenConnections ?? ''}
-              placeholder="unlimited"
+              placeholder="100"
               onChange={onNumberOption('maxOpenConnections')}
             />
           </Field>
@@ -348,7 +348,7 @@ export function ConfigEditor(props: Props) {
               width={40}
               type="number"
               value={jsonData.maxIdleConnections ?? ''}
-              placeholder="2"
+              placeholder="100"
               onChange={onNumberOption('maxIdleConnections')}
             />
           </Field>
@@ -362,7 +362,7 @@ export function ConfigEditor(props: Props) {
               width={40}
               type="number"
               value={jsonData.maxConnectionLifetime ?? ''}
-              placeholder="unlimited"
+              placeholder="14400"
               onChange={onNumberOption('maxConnectionLifetime')}
             />
           </Field>

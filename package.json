@@ -2,6 +2,14 @@
   "name": "cratedb-cratedb-datasource",
   "version": "0.1.0",
   "description": "CrateDB datasource plugin for Grafana",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/crate/cratedb-grafana-datasource.git"
+  },
+  "homepage": "https://github.com/crate/cratedb-grafana-datasource#readme",
+  "bugs": {
+    "url": "https://github.com/crate/cratedb-grafana-datasource/issues"
+  },
   "engines": {
     "node": ">=22"
   },

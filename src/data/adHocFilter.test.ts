@@ -45,6 +45,31 @@ describe('AdHocFilter', () => {
     );
   });
 
+  it.each([
+    ['=', '='],
+    ['!=', '!='],
+    ['<>', '<>'],
+    ['<', '<'],
+    ['<=', '<='],
+    ['>', '>'],
+    ['>=', '>='],
+    ['=~', '~'],
+    ['!~', '!~'],
+  ])('maps the %s operator to CrateDB syntax', (operator, sqlOperator) => {
+    const f = new AdHocFilter('doc');
+    const got = f.apply('SELECT * FROM weather', [filter({ operator, value: 'Berlin' })]);
+    expect(got).toContain(`"location" ${sqlOperator} 'Berlin'`);
+  });
+
+  it.each([
+    ['IN', 'IN'],
+    ['NOT IN', 'NOT IN'],
+  ])('maps the %s operator to CrateDB syntax', (operator, sqlOperator) => {
+    const f = new AdHocFilter('doc');
+    const got = f.apply('SELECT * FROM weather', [filter({ operator, value: 'Berlin' })]);
+    expect(got).toContain(`"location" ${sqlOperator} ('Berlin')`);
+  });
+
   it('ignores filters whose operator is not on the allowlist', () => {
     const f = new AdHocFilter('doc');
     const sql = 'SELECT * FROM weather';
@@ -58,11 +83,14 @@ describe('AdHocFilter', () => {
     expect(f.apply('SELECT * FROM weather', [filter({ value: "O'Brien" })])).toContain(`'O''Brien'`);
   });
 
-  it('maps regex operators to CrateDB syntax', () => {
+  it('leaves a backslash untouched in a value', () => {
     const f = new AdHocFilter('doc');
-    expect(f.apply('SELECT * FROM weather', [filter({ operator: '=~', value: 'Ber.*' })])).toContain(
-      `"location" ~ 'Ber.*'`
-    );
+    expect(f.apply('SELECT * FROM weather', [filter({ value: 'C:\\data' })])).toContain(`'C:\\data'`);
+  });
+
+  it('passes unicode values through unquoted-escaping', () => {
+    const f = new AdHocFilter('doc');
+    expect(f.apply('SELECT * FROM weather', [filter({ value: 'Zürich 東京' })])).toContain(`'Zürich 東京'`);
   });
 
   it('strips a trailing semicolon', () => {
@@ -77,6 +105,12 @@ describe('AdHocFilter', () => {
     const sql = 'SELECT * FROM weather';
     // an un-prefixed key can't be resolved to a table, so it must not be applied
     expect(f.apply(sql, [filter({ key: 'location' })])).toBe(sql);
+  });
+
+  it('skips a schema-qualified key, which getTagKeys never emits', () => {
+    const f = new AdHocFilter('doc');
+    const sql = 'SELECT * FROM weather';
+    expect(f.apply(sql, [filter({ key: 'doc.weather.location' })])).toBe(sql);
   });
 
   it('applies only the filters keyed to the query table, skipping the rest', () => {
@@ -130,6 +164,14 @@ describe('AdHocFilter', () => {
     const f = new AdHocFilter('doc');
     const sql = 'SELECT sub.location FROM (SELECT location FROM weather) AS sub';
     expect(f.apply(sql, [filter({})])).toBe(sql);
+  });
+
+  it('leaves a joined query unchanged', () => {
+    const f = new AdHocFilter('doc');
+    const join = 'SELECT * FROM weather JOIN sensors ON weather.id = sensors.weather_id';
+    expect(f.apply(join, [filter({})])).toBe(join);
+    const commaJoin = 'SELECT * FROM weather, sensors';
+    expect(f.apply(commaJoin, [filter({})])).toBe(commaJoin);
   });
 
   it('preserves Grafana macros when injecting (the default template shape)', () => {

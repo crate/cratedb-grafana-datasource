@@ -162,39 +162,19 @@ describe('ConfigEditor additional settings', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Expand section Additional settings' }));
   }
 
-  it('parses the row limit as a number', async () => {
+  it.each([
+    ['rowLimit', '5', 5],
+    ['maxOpenConnections', '8', 8],
+    ['timeInterval', '1', '1'],
+  ])('stores %s as typed', async (field, typed, expected) => {
     const props = makeProps();
     render(<ConfigEditor {...props} />);
     await openAdditional();
 
-    await userEvent.type(document.querySelector('input[name="rowLimit"]') as Element, '5');
+    await userEvent.type(document.querySelector(`input[name="${field}"]`) as Element, typed);
 
     expect(props.onOptionsChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ jsonData: expect.objectContaining({ rowLimit: 5 }) })
-    );
-  });
-
-  it('stores the min time interval as a string', async () => {
-    const props = makeProps();
-    render(<ConfigEditor {...props} />);
-    await openAdditional();
-
-    await userEvent.type(document.querySelector('input[name="timeInterval"]') as Element, '1');
-
-    expect(props.onOptionsChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ jsonData: expect.objectContaining({ timeInterval: '1' }) })
-    );
-  });
-
-  it('parses a connection-pool limit as a number', async () => {
-    const props = makeProps();
-    render(<ConfigEditor {...props} />);
-    await openAdditional();
-
-    await userEvent.type(document.querySelector('input[name="maxOpenConnections"]') as Element, '8');
-
-    expect(props.onOptionsChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ jsonData: expect.objectContaining({ maxOpenConnections: 8 }) })
+      expect.objectContaining({ jsonData: expect.objectContaining({ [field]: expected }) })
     );
   });
 
@@ -210,17 +190,18 @@ describe('ConfigEditor additional settings', () => {
     );
   });
 
-  it('disables the cache TTL input when the cache is disabled', async () => {
-    render(<ConfigEditor {...makeProps({ disableSchemaCache: true })} />);
+  it.each([
+    [true, true],
+    [false, false],
+  ])('sets the cache TTL input disabled to match disableSchemaCache=%s', async (disableSchemaCache, disabled) => {
+    render(<ConfigEditor {...makeProps({ disableSchemaCache })} />);
     await openAdditional();
 
-    expect(document.querySelector('input[name="schemaCacheTTLSeconds"]')).toBeDisabled();
-  });
-
-  it('enables the cache TTL input when the cache is on', async () => {
-    render(<ConfigEditor {...makeProps()} />);
-    await openAdditional();
-
-    expect(document.querySelector('input[name="schemaCacheTTLSeconds"]')).not.toBeDisabled();
+    const input = document.querySelector('input[name="schemaCacheTTLSeconds"]');
+    if (disabled) {
+      expect(input).toBeDisabled();
+    } else {
+      expect(input).not.toBeDisabled();
+    }
   });
 });

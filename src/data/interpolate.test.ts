@@ -28,4 +28,13 @@ describe('interpolateVariable', () => {
   it('quotes numeric array members', () => {
     expect(interpolateVariable([1, 2], { multi: true })).toBe("'1','2'");
   });
+
+  it('stringifies a boolean', () => {
+    expect(interpolateVariable(true, {})).toBe('true');
+  });
+
+  it('renders null and undefined as an empty string', () => {
+    expect(interpolateVariable(null, {})).toBe('');
+    expect(interpolateVariable(undefined, {})).toBe('');
+  });
 });

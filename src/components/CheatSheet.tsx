@@ -12,6 +12,9 @@ const LOGS_EXAMPLE: CrateDBQuery = {
   format: QueryFormat.Logs,
 };
 
+const ANNOTATION_QUERY_EXAMPLE =
+  `SELECT ts AS time, title AS text, array_to_string(tags, ',') AS tags FROM doc.demo_events WHERE $__timeFilter(ts)`;
+
 // help panel behind the "?" in the query editor; shows the server-side
 // aggregation pattern
 export function CheatSheet({ onClickExample }: QueryEditorHelpProps<CrateDBQuery>) {
@@ -38,6 +41,10 @@ export function CheatSheet({ onClickExample }: QueryEditorHelpProps<CrateDBQuery
       >
         Use the recommended template
       </button>
+      <p>
+        This template names <code>doc.demo_metrics</code>, one of the tables the plugin&apos;s dev stack seeds; swap in
+        your own table and timestamp column.
+      </p>
       <pre>
         <code>{TIMESERIES_QUERY_TEMPLATE}</code>
       </pre>
@@ -71,8 +78,22 @@ export function CheatSheet({ onClickExample }: QueryEditorHelpProps<CrateDBQuery
       <button type="button" className="btn btn-secondary" onClick={() => onClickExample(LOGS_EXAMPLE)}>
         Use the logs template
       </button>
+      <p>
+        This template names <code>doc.demo_logs</code>, one of the tables the plugin&apos;s dev stack seeds; swap in
+        your own table and timestamp column.
+      </p>
       <pre>
         <code>{LOGS_QUERY_TEMPLATE}</code>
+      </pre>
+
+      <h2>Annotations</h2>
+      <p>
+        An annotation query returns <code>time</code> (timestamp), optionally <code>timeEnd</code>, <code>text</code>,
+        and <code>tags</code>. CrateDB array columns need <code>array_to_string(tags, &apos;,&apos;) AS tags</code>,
+        since Grafana expects a comma-separated string.
+      </p>
+      <pre>
+        <code>{ANNOTATION_QUERY_EXAMPLE}</code>
       </pre>
 
       <h2>Ad-hoc filters</h2>
@@ -98,6 +119,15 @@ export function CheatSheet({ onClickExample }: QueryEditorHelpProps<CrateDBQuery
         <li>
           The <code>sys</code> schema is queryable like any other table, useful for cluster monitoring (
           <code>sys.nodes</code>, <code>sys.shards</code>, <code>sys.jobs_log</code>).
+        </li>
+        <li>
+          <code>OBJECT</code> sub-columns are addressed as <code>&quot;tags&quot;[&apos;host&apos;]</code> and appear
+          under that name in autocomplete, e.g. <code>SELECT &quot;tags&quot;[&apos;host&apos;] FROM t</code>.
+        </li>
+        <li>
+          Arrays are expanded row-wise with <code>UNNEST</code> and tested with <code>ANY</code>, e.g.{' '}
+          <code>SELECT * FROM t WHERE &apos;deploy&apos; = ANY(tags)</code>. A whole <code>OBJECT</code> or array
+          column can be selected directly (it renders as JSON) but cannot be grouped by or equality-filtered.
         </li>
       </ul>
     </div>

@@ -1,10 +1,11 @@
 import React from 'react';
 
-import { Button, Combobox, ComboboxOption, IconButton, Input, MultiCombobox, RadioButtonGroup, Stack } from '@grafana/ui';
+import { Button, Combobox, ComboboxOption, IconButton, MultiCombobox, RadioButtonGroup, Stack } from '@grafana/ui';
 
 import { columnKind } from '../../data/columnTypes';
 import { ColumnKind, ColumnMeta, Filter, FilterOperator } from '../../types';
 import { ColumnSelect } from './ColumnSelect';
+import { CommitOnBlurInput } from './CommitOnBlurInput';
 
 // filter-row editor: column, operator (narrowed by the column's kind), a value
 // editor matching the operator, and the AND/OR joiner with the previous row
@@ -95,23 +96,8 @@ function ValueEditor({
       <Combobox options={BOOLEAN_VALUES} value={value ?? null} onChange={(v) => onCommit(v.value)} width={12} />
     );
   }
-  // controlled so a middle-row delete can't leave stale text on a shifted row;
-  // typing updates state without running, blur/Enter runs
   const value = Array.isArray(filter.value) ? '' : (filter.value ?? '');
-  return (
-    <Input
-      value={value}
-      placeholder="Value"
-      width={25}
-      onChange={(event) => onCommit(event.currentTarget.value, false)}
-      onBlur={(event) => onCommit(event.currentTarget.value, true)}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter') {
-          onCommit(event.currentTarget.value, true);
-        }
-      }}
-    />
-  );
+  return <CommitOnBlurInput value={value} placeholder="Value" width={25} onCommit={onCommit} />;
 }
 
 export function FilterEditor({ columns, value, onChange }: Props) {

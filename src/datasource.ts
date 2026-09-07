@@ -122,7 +122,6 @@ export class CrateDBDatasource
     return !!query.rawSql;
   }
 
-  // ---- supplementary queries: the Explore logs-volume histogram ------------
   // Without these, Explore buckets only the (LIMITed) returned log lines and
   // flags the graph as partial; with them it runs a full-range aggregation.
 

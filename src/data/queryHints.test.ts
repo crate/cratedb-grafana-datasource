@@ -60,6 +60,22 @@ describe('attachTimeBoundNotices', () => {
     expect(b.meta?.notices).toBeUndefined();
   });
 
+  it('skips sys.* tables, which have no time column', () => {
+    const request = makeRequest([
+      { rawSql: 'SELECT health FROM sys.cluster_health' },
+      { rawSql: 'SELECT count(*) FROM doc.metrics' },
+      { rawSql: 'SELECT * FROM "sys"."nodes"' },
+    ]);
+    const response = makeResponse([{ refId: 'A' }, { refId: 'B' }, { refId: 'C' }]);
+
+    attachTimeBoundNotices(request, response);
+
+    const [sysDotted, doc, sysQuoted] = response.data as Array<{ meta?: { notices?: unknown[] } }>;
+    expect(sysDotted.meta?.notices).toBeUndefined();
+    expect(doc.meta?.notices).toHaveLength(1);
+    expect(sysQuoted.meta?.notices).toBeUndefined();
+  });
+
   it('keeps existing notices', () => {
     const request = makeRequest([{ rawSql: 'SELECT * FROM t' }]);
     const response = makeResponse([{ refId: 'A', meta: { notices: [{ severity: 'warning', text: 'limited' }] } }]);

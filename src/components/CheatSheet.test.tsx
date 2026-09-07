@@ -63,4 +63,25 @@ describe('CheatSheet reference content', () => {
     expect(screen.getAllByText(/EXPLAIN/).length).toBeGreaterThan(0);
     expect(screen.getByText(/sys\.jobs_log/)).toBeInTheDocument();
   });
+
+  it('documents which table each template button loads', () => {
+    renderSheet();
+
+    expect(screen.getByText(/doc\.demo_metrics/)).toBeInTheDocument();
+    expect(screen.getByText(/doc\.demo_logs/)).toBeInTheDocument();
+  });
+
+  it('documents the annotation query shape', () => {
+    renderSheet();
+
+    expect(screen.getByRole('heading', { name: /annotations/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/array_to_string/).length).toBeGreaterThan(0);
+  });
+
+  it('documents OBJECT and array addressing', () => {
+    renderSheet();
+
+    expect(screen.getAllByText(/OBJECT/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/UNNEST/)).toBeInTheDocument();
+  });
 });

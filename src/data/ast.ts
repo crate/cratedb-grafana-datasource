@@ -24,20 +24,22 @@ function qualify(name: { schema?: string; name: string }): string {
   return name.schema ? `${name.schema}.${name.name}` : name.name;
 }
 
-// table of the top-level FROM, empty when there's no plain table to name. A
-// subquery FROM returns empty: its columns aren't reachable from an outer WHERE,
-// so ad-hoc injection is skipped rather than spliced at the wrong level.
+// table of the top-level FROM, empty when there's no single plain table to name. A
+// subquery FROM returns empty: its columns aren't reachable from an outer WHERE, so
+// ad-hoc injection is skipped rather than spliced at the wrong level. A join or comma
+// join also returns empty: an unqualified column would be ambiguous between relations.
 export function getTable(sql: string): string {
-  const from = parseSelect(sql)?.from?.[0];
-  return from?.type === 'table' ? qualify(from.name) : '';
+  const from = parseSelect(sql)?.from;
+  return from?.length === 1 && from[0].type === 'table' ? qualify(from[0].name) : '';
 }
 
 // splice predicate into the top-level WHERE (before GROUP BY): an existing WHERE
 // becomes (orig) AND (predicate), else a fresh WHERE goes after the FROM. null when
-// there's no plain SELECT/FROM to rewrite
+// there's no single-table SELECT/FROM to rewrite (a join or comma join makes an
+// unqualified predicate column ambiguous between relations)
 export function injectPredicate(sql: string, predicate: string): string | null {
   const stm = parseSelect(sql);
-  if (!stm?.from?.length) {
+  if (stm?.from?.length !== 1 || stm.from[0].type !== 'table') {
     return null;
   }
   const where = stm.where?._location;

@@ -1,6 +1,7 @@
 import { DataQueryRequest, DataQueryResponse, QueryResultMetaNotice } from '@grafana/data';
 
 import { CrateDBQuery } from '../types';
+import { getTable } from './ast';
 import { stripComments } from './formatDetection';
 
 // the macros that bind a query to the panel time range
@@ -12,6 +13,14 @@ const INTERNAL_REF_IDS = new Set(['adhoc-metadata', 'variable-query']);
 
 export function hasTimeBound(rawSql: string): boolean {
   return TIME_BOUND_MACRO.test(stripComments(rawSql));
+}
+
+// sys.* tables are cluster-monitoring snapshots with no time column, so the
+// time-bound notice doesn't apply to them
+function isSysTable(rawSql: string): boolean {
+  const table = getTable(rawSql);
+  const schema = table.includes('.') ? table.split('.')[0] : '';
+  return schema.toLowerCase() === 'sys';
 }
 
 const NOTICE: QueryResultMetaNotice = {
@@ -30,7 +39,9 @@ export function attachTimeBoundNotices(
 ): DataQueryResponse {
   const unbounded = new Set(
     request.targets
-      .filter((t) => !t.hide && !INTERNAL_REF_IDS.has(t.refId) && t.rawSql && !hasTimeBound(t.rawSql))
+      .filter(
+        (t) => !t.hide && !INTERNAL_REF_IDS.has(t.refId) && t.rawSql && !hasTimeBound(t.rawSql) && !isSysTable(t.rawSql)
+      )
       .map((t) => t.refId)
   );
   if (unbounded.size === 0) {

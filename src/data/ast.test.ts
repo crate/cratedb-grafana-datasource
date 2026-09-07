@@ -1,4 +1,4 @@
-import { getTable } from './ast';
+import { getTable, injectPredicate } from './ast';
 
 describe('getTable', () => {
   it('extracts a bare table', () => {
@@ -32,5 +32,27 @@ describe('getTable', () => {
   it('returns empty string for non-select statements', () => {
     expect(getTable('INSERT INTO t VALUES (1)')).toBe('');
     expect(getTable('not sql at all ???')).toBe('');
+  });
+
+  it.each([
+    ['a JOIN', 'SELECT * FROM a JOIN b ON a.id = b.id'],
+    ['comma join', 'SELECT * FROM a, b'],
+  ])('returns empty for a multi-relation FROM (%s)', (_label, sql) => {
+    // both tables carry an unqualified column identically, so the filter scope
+    // can't be resolved to either one without risking an ambiguous reference
+    expect(getTable(sql)).toBe('');
+  });
+});
+
+describe('injectPredicate', () => {
+  it('splices into a single-table FROM', () => {
+    expect(injectPredicate('SELECT * FROM weather', 'active')).toBe('SELECT * FROM weather WHERE (active)');
+  });
+
+  it.each([
+    ['a JOIN', 'SELECT * FROM a JOIN b ON a.id = b.id'],
+    ['comma join', 'SELECT * FROM a, b'],
+  ])('returns null for a multi-relation FROM (%s)', (_label, sql) => {
+    expect(injectPredicate(sql, 'active')).toBeNull();
   });
 });
