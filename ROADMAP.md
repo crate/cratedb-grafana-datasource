@@ -1,6 +1,6 @@
 # Roadmap
 
-What is planned for 0.2, and why each item is not in 0.1. Issues and 👍 reactions on
+What is planned for 0.2, and why each item is not in 0.1. Issues and reactions on
 [the tracker](https://github.com/crate/cratedb-grafana-datasource/issues) move things up this list.
 
 ## Queries and the editor
@@ -20,7 +20,7 @@ What is planned for 0.2, and why each item is not in 0.1. Issues and 👍 reacti
 
 - **`GEO_POINT` as coordinates.** Geo points arrive as the text `(lon,lat)` and stay text, so the
   geomap panel cannot read them. A converter has to split them into the fields Grafana expects,
-  which is a frame-shape decision rather than a type mapping.
+  which is a frame-shape decision.
 - **Traces.** Logs and metrics are covered; traces need Grafana's trace frame schema, which has no
   natural CrateDB table shape yet.
 - **Explore's filter-for-value and log context.** Both are data source callbacks Explore offers.

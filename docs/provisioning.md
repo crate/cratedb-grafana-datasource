@@ -35,7 +35,7 @@ datasources:
       tlsClientCertFile: /etc/grafana/certs/client.crt
       tlsClientKeyFile: /etc/grafana/certs/client.key
 
-      # pool and timeouts, in seconds where a duration
+      # pool and timeouts; durations in seconds
       timeout: 10                     # connect timeout; unset means no client-side limit
       queryTimeout: 60
       maxOpenConnections: 100

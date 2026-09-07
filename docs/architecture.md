@@ -200,8 +200,8 @@ apply.
 
 ### Introspection (`pkg/plugin/completable.go`)
 
-Targets `information_schema`, not `pg_catalog`: CrateDB's `pg_catalog` emulation is partial while
-its `information_schema` is complete, which is why the plugin does not reuse Grafana core's
+Targets `information_schema`: CrateDB's `pg_catalog` emulation is partial while its
+`information_schema` is complete, which is why the plugin does not reuse Grafana core's
 `parse_ident()`-based `postgresMetaQuery.ts` queries. The `sys` schema is included on purpose:
 cluster-monitoring dashboards on `sys.nodes` / `sys.shards` / `sys.jobs_log` are a useful CrateDB
 feature; only `information_schema`, `pg_catalog`, and `blob` are hidden. Side effect: CrateDB lists
@@ -253,8 +253,8 @@ settable by a viewer. Keys are `table.column` pairs from the default schema, val
 
 Injection needs one unambiguous table to attach the predicate to, so a query whose `FROM` is
 anything else runs unfiltered: joins (explicit or comma-separated), CTEs, `UNION`, subqueries, and a
-table name supplied by a template variable. The skip is silent, which is worth knowing on a
-dashboard that mixes such queries with single-table ones.
+table name supplied by a template variable. The skip is silent: a dashboard that mixes such
+queries with single-table ones shows some panels responding to a filter and others not.
 
 Connection failures are classified (`pkg/plugin/connection_error.go`) so "Save & test" and query
 inspectors show, e.g., "authentication failed: check the username and password" instead of a raw
@@ -356,7 +356,7 @@ Four automated tiers, all wired into CI (see `Makefile` / `.github/workflows/ci.
 | Tier | Command | Covers |
 |---|---|---|
 | Unit | `make test` | Macro emissions (golden strings plus a full `sqlutil.Interpolate` round trip), converters, settings/DSN parsing, error classification, schema cache, ad-hoc filter SQL generation, `$__conditionalAll`. No containers. |
-| Integration | `make test-integration` | The driver in-process against a real CrateDB (testcontainers): connect and execute the interpolated default template, no Grafana or `dist/` needed. Runs across a CrateDB version matrix in CI (6.3, the oldest version CI exercises / latest / nightly). |
+| Integration | `make test-integration` | The driver in-process against a real CrateDB (testcontainers): connect and execute the interpolated default template, no Grafana or `dist/` needed. Runs across a CrateDB version matrix in CI (6.3, latest, nightly). |
 | Go e2e | `make e2e` | The **deployed** plugin through Grafana's API: health checks, `/api/ds/query` with macros (including the backend-side `$__interval` alerting path and a provisioned alert rule), autocomplete resource routes (asserting empty results serialize as `[]`, not `null`), frame field types (incl. OBJECT as structured JSON), time-series frame shape. Hermetic (testcontainers boots CrateDB + Grafana with `dist/` mounted) or attached to a `make up` stack via `GRAFANA_URL`. |
 | Browser smoke | `make e2e-browser` | Playwright and `@grafana/plugin-e2e` against the compose stack (boots and seeds it), in CI across a Grafana version matrix (the `12.3` floor and current stable): config editor renders and "Save & test" succeeds (and fails actionably for an unreachable host), query editor loads Monaco with the default template, a seeded query returns data, bundled dashboards provision and render. |
 

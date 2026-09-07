@@ -28,11 +28,11 @@ cheat sheet (book icon) lists them next to runnable query templates.
 | `$__conditionalAll(cond, $var)` | `cond` when the multi-select variable `$var` has a selection, `1=1` when it is on *All* |
 | `$__interval`, `$__interval_ms`, `$__table`, `$__column` | provided by the plugin SDK |
 
-## Rules worth knowing
+## Rules
 
 **Arguments pass through verbatim.** A macro does not quote the column you give it, so
-quote mixed-case identifiers yourself — CrateDB lower-cases unquoted ones. Write
-`$__timeFilter("myColumn")`, not `$__timeFilter(myColumn)`.
+quote mixed-case identifiers yourself: CrateDB lower-cases unquoted ones, so
+`$__timeFilter(myColumn)` filters on `mycolumn`.
 
 **Bucket widths below a second stay milliseconds.** `intervalLiteral` renders whole seconds
 as `N seconds` and anything finer as `N milliseconds`, so a 200ms interval is not coarsened
@@ -40,8 +40,8 @@ to one second.
 
 **A bare `$__timeGroup(...)` projection is shorthand for the aliased form.** When it sits
 directly before a comma in the outermost select list, it is rewritten to `$__timeGroupAlias(...)`,
-matching Grafana's built-in PostgreSQL data source. Anywhere else — inside `GROUP BY`, inside
-an expression — it expands as written.
+matching Grafana's built-in PostgreSQL data source. Anywhere else (inside `GROUP BY`, inside
+an expression) it expands as written.
 
 **`$__timeGroup` accepts `$__interval` as its width.** On the alerting path the literal
 `$__interval` reaches the backend unexpanded and resolves from the query's own interval, so
@@ -64,7 +64,7 @@ a frame that holds several series per bucket in long form.
 unit the way Grafana's built-in SQL data sources do: values in the 1e9 decade are seconds,
 values in the 1e18 decade nanoseconds, everything else milliseconds. That covers `$__timeEpoch`
 and `$__unixEpochGroupAlias`, which yield seconds, and `"ts"::bigint`, which yields CrateDB's
-native milliseconds. All of them plot without a cast.
+native milliseconds.
 
 ## Time-series template
 

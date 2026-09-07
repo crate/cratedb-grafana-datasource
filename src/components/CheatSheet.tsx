@@ -126,8 +126,8 @@ export function CheatSheet({ onClickExample }: QueryEditorHelpProps<CrateDBQuery
         </li>
         <li>
           Arrays are expanded with <code>UNNEST</code> in the select list, e.g.{' '}
-          <code>SELECT UNNEST(tags) AS tag FROM t</code>; <code>UNNEST</code> over a column of the same query&apos;s{' '}
-          <code>FROM</code> is unsupported. Membership is tested with <code>ANY</code>, e.g.{' '}
+          <code>SELECT UNNEST(tags) AS tag FROM t</code>; in the <code>FROM</code> clause, <code>UNNEST</code> cannot{' '}
+          reference the same query&apos;s table. Membership is tested with <code>ANY</code>, e.g.{' '}
           <code>SELECT * FROM t WHERE &apos;deploy&apos; = ANY(tags)</code>.
         </li>
         <li>
