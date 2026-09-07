@@ -65,4 +65,5 @@ file paths, in the UI and via provisioning) but no tier exercises a CrateDB HBA 
 setup.
 
 `src/img/logo.svg` is a placeholder awaiting the official CrateDB brand asset; replacing it is a
-checklist item in [RELEASE.md](RELEASE.md#before-the-first-tag).
+checklist item in
+[RELEASE.md](https://github.com/crate/cratedb-grafana-datasource/blob/main/RELEASE.md#before-the-first-tag).

@@ -151,7 +151,7 @@ unresponsive cluster cannot hang an editor session.
 | `$__unixEpochFrom()` / `$__unixEpochTo()` | the range boundary as epoch seconds |
 | `$__unixEpochNanoFilter(ts)` | the same bound in nanoseconds |
 | `$__unixEpochNanoFrom()` / `$__unixEpochNanoTo()` | the range boundary as epoch nanoseconds |
-| `$__unixEpochGroup(Alias)(ts, 1m)` | `FLOOR(ts/60)*60` (… `AS "time"`) |
+| `$__unixEpochGroup(Alias)(ts, 1m[, fill])` | `FLOOR(ts/60)*60` (… `AS "time"`) |
 | `$__interval_s` | panel interval as whole seconds (min 1) |
 | `$__conditionalAll(cond, $var)` | `cond`, or `1=1` when `$var` is *All* (see `src/datasource.ts`; backend fallback on the alerting path) |
 
@@ -166,7 +166,7 @@ Design notes:
   it is emitted unconditionally and sets the plugin's CrateDB floor. The manual equivalent for older
   clusters, `FLOOR(EXTRACT(EPOCH FROM ts)/N)*N`, returns epoch seconds and is documented but never
   emitted.
-- The third argument to `$__timeGroup` and `$__timeGroupAlias` follows the postgres convention:
+- The third argument to the four group macros follows the postgres convention:
   `NULL`, a number, or `previous`. CrateDB cannot generate the missing buckets in SQL, so the
   backend fills them into the frame after the query, across the whole panel range rather than only
   between the first and last returned row.
@@ -194,8 +194,9 @@ divergences from stock PostgreSQL:
   falls through to the sqlutil default (string, e.g. `(9.74,47.41)`).
 
 A time-series query whose time column is numeric is still plottable: a column named `time` holding
-numbers is read as epoch seconds and converted to timestamps, the same reading Grafana's PostgreSQL
-data source applies.
+numbers is read at the resolution its magnitude implies (the 1e9 decade as seconds, 1e18 as
+nanoseconds, anything else as milliseconds), the same reading Grafana's built-in SQL data sources
+apply.
 
 ### Introspection (`pkg/plugin/completable.go`)
 
@@ -313,16 +314,15 @@ and Redshift (SQL macros, completion provider). `NOTICE` maps each adapted area 
 
 - **Plugin id:** `cratedb-cratedb-datasource`, following the catalog convention
   `<orgSlug>-<name>-<type>`. The `cratedb-` prefix has to match Crate.io's verified grafana.com org
-  slug (status in [§8](#8-open-questions)).
+  slug.
 - **Repo naming:** `cratedb-grafana-datasource`, per the Crate.io ecosystem convention
   (`cratedb-prometheus-adapter`, `cratedb-tableau-connector`); the plugin id is constrained by the
   catalog convention independently of the repo name.
 - **Distribution:** an unsigned release archive, installed on self-hosted Grafana by listing the
-  plugin id in `allow_loading_unsigned_plugins`. Grafana signs a plugin offered by a for-profit
-  business at the `commercial` level, which carries a paid Commercial Plugin Subscription
-  ([plugin policy](https://grafana.com/legal/plugins/)); without that signature there is no catalog
-  listing and no Grafana Cloud. `@grafana/sign-plugin` is wired up (`make sign`, and the
-  `GRAFANA_ACCESS_POLICY_TOKEN` secret in the release workflow) and inert until a token exists.
+  plugin id in `allow_loading_unsigned_plugins`; what stands between the plugin and a signature is
+  in [the README](../README.md#installation). `@grafana/sign-plugin` is wired up (`make sign`, and
+  the `GRAFANA_ACCESS_POLICY_TOKEN` secret in the release workflow) and inert until a token
+  exists.
 - **Grafana floor:** `>=12.3.0`. All plugins share the host's single React instance; the frontend
   externalizes `react/jsx-runtime` so it uses the host's React (18 on 12.x, 19 on 13.x) instead of
   bundling its own JSX runtime, and 12.3 is the first version that provides that external. QuestDB
@@ -356,7 +356,7 @@ Four automated tiers, all wired into CI (see `Makefile` / `.github/workflows/ci.
 | Tier | Command | Covers |
 |---|---|---|
 | Unit | `make test` | Macro emissions (golden strings plus a full `sqlutil.Interpolate` round trip), converters, settings/DSN parsing, error classification, schema cache, ad-hoc filter SQL generation, `$__conditionalAll`. No containers. |
-| Integration | `make test-integration` | The driver in-process against a real CrateDB (testcontainers): connect and execute the interpolated default template, no Grafana or `dist/` needed. Runs across a CrateDB version matrix in CI (oldest supported / latest / nightly). |
+| Integration | `make test-integration` | The driver in-process against a real CrateDB (testcontainers): connect and execute the interpolated default template, no Grafana or `dist/` needed. Runs across a CrateDB version matrix in CI (6.3, the oldest version CI exercises / latest / nightly). |
 | Go e2e | `make e2e` | The **deployed** plugin through Grafana's API: health checks, `/api/ds/query` with macros (including the backend-side `$__interval` alerting path and a provisioned alert rule), autocomplete resource routes (asserting empty results serialize as `[]`, not `null`), frame field types (incl. OBJECT as structured JSON), time-series frame shape. Hermetic (testcontainers boots CrateDB + Grafana with `dist/` mounted) or attached to a `make up` stack via `GRAFANA_URL`. |
 | Browser smoke | `make e2e-browser` | Playwright and `@grafana/plugin-e2e` against the compose stack (boots and seeds it), in CI across a Grafana version matrix (the `12.3` floor and current stable): config editor renders and "Save & test" succeeds (and fails actionably for an unreachable host), query editor loads Monaco with the default template, a seeded query returns data, bundled dashboards provision and render. |
 
@@ -377,11 +377,6 @@ Design decisions the tiers encode:
 
 ## 8. Open questions
 
-- **Signing** is a commercial question rather than a technical one. A catalog listing and Grafana
-  Cloud both need a `commercial`-level signature, which needs a paid Commercial Plugin Subscription
-  with Grafana Labs. Until that is bought, releases ship unsigned for self-hosted Grafana only.
-  Signing would also need Crate.io's grafana.com org, whose verified slug the `cratedb-` plugin-id
-  prefix must match.
 - **mTLS (client-certificate authentication)**: the plugin can send a client cert/key pair (PEM
   content or file paths, configurable in the UI and via provisioning), but no test tier exercises a
   CrateDB HBA `method: cert` setup. Low priority; password with TLS covers the common deployment.

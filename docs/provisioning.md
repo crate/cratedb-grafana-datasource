@@ -4,6 +4,10 @@ The data source can be configured from a YAML file instead of the UI. Grafana re
 `provisioning/datasources/*.yaml` under its configuration directory (`/etc/grafana/provisioning`
 in the Docker image) at startup.
 
+While the plugin ships unsigned, the same Grafana instance also needs
+`allow_loading_unsigned_plugins = cratedb-cratedb-datasource`, or the provisioned data source
+resolves to nothing. See [Installation](../README.md#installation).
+
 ## Full example
 
 Every key the plugin reads. Only `server` is required; anything left out falls back to the
@@ -55,8 +59,10 @@ secrets can also come from environment variables with Grafana's `$ENV_VAR` synta
 
 ## Certificates as file paths or inline PEM
 
-`tlsConfigurationMethod` picks where the certificate material comes from. Both fragments below
-slot into the datasource entry above.
+`tlsConfigurationMethod` picks where the certificate material comes from. An unset method reads as
+`file-content`, so a file-path deployment has to set it: the `tls*File` keys are ignored without it
+and the connection runs without the certificates. Both fragments below slot into the datasource
+entry above.
 
 `file-path` points at files on the Grafana server's filesystem, readable by the Grafana process:
 

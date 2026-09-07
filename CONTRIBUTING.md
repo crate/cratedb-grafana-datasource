@@ -12,8 +12,8 @@ etiquette; **everything technical lives in [DEVELOPMENT.md](DEVELOPMENT.md)**
   most of a diagnosis.
 - Not sure it's a bug? The [CrateDB community forum](https://community.cratedb.com)
   is a good first stop.
-- [ROADMAP.md](ROADMAP.md) lists what is already planned for 0.2 and why each item
-  waits, which is the fastest way to see whether an idea is on the way already.
+- [ROADMAP.md](ROADMAP.md) lists what is planned for 0.2 and why each item waits —
+  worth a look before filing a feature request.
 
 ## Pull requests
 

@@ -4,6 +4,10 @@ An annotation query is a SQL query whose rows Grafana draws as event markers acr
 axis. Add one under *Dashboard settings → Annotations → New annotation query*, pick the CrateDB
 data source, and write the query in the same editor panels use.
 
+Switch that editor to SQL and set *Format* to *Table*: an annotation is a row set read by column
+name. A new query opens in the visual builder with the *Time series* format, which reshapes the
+result into a series.
+
 ## Columns
 
 Grafana reads the annotation by column name, so the query has to alias its projections:
@@ -30,7 +34,7 @@ array_to_string("tags", ',') AS tags
 ## Example
 
 The query behind the *Demo events* annotation in the bundled *CrateDB Getting Started* dashboard,
-over the `doc.demo_events` table `make seed` creates:
+over a `doc.demo_events` table holding `ts`, `title` and a `tags` array:
 
 ```sql
 SELECT

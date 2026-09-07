@@ -30,7 +30,6 @@ failures come back with a concrete fix rather than a raw driver error, and the c
 warns when the host URL points at CrateDB's HTTP port (4200) instead of the PostgreSQL wire
 port (5432) — the most common connection mistake.
 
-
 ## Migrating from the PostgreSQL data source
 
 ### Repointing existing dashboards
@@ -65,7 +64,7 @@ Grafana 10.
 | TLS/SSL Method | TLS/SSL Method, with the same choice between pasted PEM content and server-side file paths |
 | Max open, Max idle, Max lifetime | Same three fields under *Additional settings* |
 | Min time interval | Min time interval |
-| Version, TimescaleDB | no equivalent; the plugin detects nothing from the server version |
+| Version, TimescaleDB | no equivalent; this plugin does not vary its SQL by server version |
 | — | Row limit, query timeout, autocomplete cache TTL, secure SOCKS proxy |
 
 ### Macros
@@ -73,12 +72,12 @@ Grafana 10.
 | Macro | Behaviour here |
 |---|---|
 | `$__time`, `$__timeEpoch` | identical |
-| `$__timeFilter`, `$__timeFrom`, `$__timeTo` | identical, with millisecond-precision literals |
+| `$__timeFilter`, `$__timeFrom`, `$__timeTo` | same range semantics; the literals carry millisecond precision |
 | `$__unixEpochFilter`, `$__unixEpochFrom`, `$__unixEpochTo` | identical |
 | `$__unixEpochNanoFilter`, `$__unixEpochNanoFrom`, `$__unixEpochNanoTo` | identical |
 | `$__unixEpochGroup`, `$__unixEpochGroupAlias` | identical |
 | `$__timeGroup`, `$__timeGroupAlias` | bucket boundaries match, the column type does not: CrateDB's `DATE_BIN` returns a `TIMESTAMPTZ` where PostgreSQL's `floor(extract(epoch from …))` returns a number. A panel plots either; a query that did arithmetic on the bucket value needs adjusting |
-| `$__searchFilter` | unsupported, planned for 0.2. A query variable that uses it fails instead of returning an unfiltered list |
+| `$__searchFilter` | unsupported, planned for 0.2. Grafana leaves the token in the query as literal text, so the usual `LIKE '$__searchFilter'` pattern compares against that string and returns no rows |
 
 The plugin also adds macros the built-in data source has no equivalent for — `$__dateFilter`,
 `$__fromTime`, `$__toTime`, `$__interval_s` and `$__conditionalAll`. They are covered in

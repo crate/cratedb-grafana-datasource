@@ -39,15 +39,13 @@ Pre-1.0, minor bumps may include breaking changes; note them prominently in the 
 
 ## Distribution
 
-Releases are unsigned, and Grafana loads an unsigned plugin only where an admin allows the plugin
-id explicitly — self-hosted instances, never Grafana Cloud. The README's *Installation* section is
-what users follow.
+Releases are unsigned, which limits them to self-hosted instances whose admin allows the plugin id
+explicitly; [the README](README.md#installation) is what users follow and why the plugin carries no
+signature yet.
 
-Grafana signs a plugin offered by a for-profit business at the `commercial` level, which carries a
-paid Commercial Plugin Subscription ([plugin policy](https://grafana.com/legal/plugins/)). Signing
-would also need a [grafana.com](https://grafana.com) organization whose slug matches the plugin id
-prefix (`cratedb-`) and an access-policy token with the `plugins:write` scope stored as
-`GRAFANA_ACCESS_POLICY_TOKEN`. The tooling is already wired for that day:
+Signing needs an access-policy token with the `plugins:write` scope, stored as
+`GRAFANA_ACCESS_POLICY_TOKEN` and issued by a [grafana.com](https://grafana.com) organization whose
+slug matches the plugin-id prefix (`cratedb-`). The tooling is already wired for that day:
 
 ```bash
 make build
@@ -74,12 +72,12 @@ One-time items that gate the first public release:
 - [ ] The grafana.com organization slug question is answered: either Crate.io holds a verified org
       whose slug matches the `cratedb-` plugin-id prefix and signing is turned on, or the release
       ships unsigned deliberately (see [Distribution](#distribution))
-- [ ] `src/img/logo.svg` is the official CrateDB mark, not the placeholder
+- [ ] `src/img/logo.svg` carries the official CrateDB mark
 
 ## Checklist
 
 - [ ] CHANGELOG section exists for the version (`make release-notes VERSION=X.Y.Z` prints it)
-- [ ] The CHANGELOG heading for the version no longer says `(unreleased)` (`make release-notes`
+- [ ] The CHANGELOG heading for the version carries no `(unreleased)` marker (`make release-notes`
       refuses it)
 - [ ] `make check-version VERSION=X.Y.Z` passes on main
 - [ ] CI green on main (including the CrateDB version matrix)

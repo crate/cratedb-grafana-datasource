@@ -56,12 +56,12 @@ column, a logs panel and annotations.
 - **Grafana 12.3 or later.** The frontend uses the host's React through the shared
   `react/jsx-runtime` external (React 18 on Grafana 12.x, 19 on 13.x) rather than bundling its own;
   12.3 is the first version to provide it.
-- **CrateDB 4.7 or later.** `$__timeGroup` expands to `DATE_BIN`, which CrateDB added in 4.7. On an
-  older cluster, bucket by hand with `FLOOR(EXTRACT(EPOCH FROM ts)/N)*N`, which yields epoch seconds
-  rather than a timestamp. Nothing else in the plugin sets a floor: introspection reads
-  `information_schema` directly, so there is no `parse_ident()` dependency. (That `>= 6.3` floor
-  applies only to Grafana's built-in PostgreSQL data source, whose query builder needs
-  `parse_ident()`.)
+- **CrateDB 4.7 or later**, with 6.3 and later covered by CI. `$__timeGroup` expands to `DATE_BIN`,
+  which CrateDB added in 4.7; on an older cluster, bucket by hand with
+  `FLOOR(EXTRACT(EPOCH FROM ts)/N)*N`, which yields epoch seconds rather than a timestamp. Nothing
+  else in the plugin sets a floor: introspection reads `information_schema` directly. (Grafana's
+  built-in PostgreSQL data source needs `parse_ident()` and therefore CrateDB 6.3 or later; this
+  plugin does not.)
 
 ## Installation
 
@@ -124,7 +124,7 @@ a signed, catalog-listed release.
 
 | Option | Default | Notes |
 |---|---|---|
-| Host URL | — | CrateDB node or load balancer as `host:port`. Use the **PostgreSQL wire port, usually 5432** — not the HTTP port 4200 |
+| Host URL | — | CrateDB node or load balancer as `host:port`. Use the **PostgreSQL wire port, usually 5432**; the HTTP port 4200 speaks a different protocol |
 | Default schema | `doc` | Applied as `search_path`. `doc` is where CrateDB puts tables created without a schema, but tables can live anywhere |
 | Username | `crate` | |
 | Password | empty | Optional — CrateDB's Docker default is trust authentication |
@@ -159,8 +159,8 @@ The result format follows the builder flavor you pick. In the SQL editor it defa
 a time series when the first column is aliased `time` (or uses `$__timeGroupAlias`) and more
 columns follow, a table otherwise. Override with *Time series*, *Table* or *Logs* at any time.
 
-**4. Browse logs** in Explore with the builder's *Logs* flavor — time, message and severity column
-pickers — or in SQL by aliasing columns to `time`, `body` and optionally `level`.
+**4. Browse logs** in Explore with the builder's *Logs* flavor, which offers time, message and
+severity column pickers, or in SQL by aliasing columns to `time`, `body` and optionally `level`.
 
 **5. Open the bundled dashboards.** *CrateDB Cluster Health* and *CrateDB Getting Started* ship
 with the plugin and appear under the data source's *Dashboards* tab.

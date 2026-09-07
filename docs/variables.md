@@ -2,8 +2,8 @@
 
 ## Query variables
 
-A query variable gets the same SQL editor as a panel — schema, table and column autocomplete
-plus macro hover — rather than a plain text box.
+A query variable gets the same SQL editor as a panel, with schema, table and column autocomplete
+plus macro hover, rather than a plain text box.
 
 Variable queries run as table queries and resolve two ways:
 
@@ -69,7 +69,6 @@ queries with single-table ones will show some panels responding to the filter an
 
 ### Adding the control
 
-On **Grafana 12 and later** the control is called **Filter** and no longer appears in the
-variable-type list: use **Edit → + Add → Filter and Group by**, then pick the CrateDB data
-source. On older versions it is the *Ad hoc filters* variable type. A dashboard-JSON variable
+On **Grafana 12 and later** the control is called **Filter** and sits outside the variable-type
+list: use **Edit → + Add → Filter and Group by**, then pick the CrateDB data source. On older versions it is the *Ad hoc filters* variable type. A dashboard-JSON variable
 of `"type": "adhoc"` works on every version.

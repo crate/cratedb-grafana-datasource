@@ -12,7 +12,7 @@ What is planned for 0.2, and why each item is not in 0.1. Issues and 👍 reacti
   it. The typed prefix has to reach the variable query, which the variable editor does not pass
   today.
 - **Value suggestions for the builder's `IN` filter.** Values are typed by hand. Suggesting them
-  means a `DISTINCT` lookup per column, with the same cost guard the ad-hoc value list needs.
+  means a `DISTINCT` lookup per column, which needs a cost guard first.
 - **A SQL formatter in the raw editor.** The parser the plugin already uses can read the SQL back,
   but printing it re-renders macros, so a formatter has to be taught to leave them alone.
 
@@ -44,13 +44,8 @@ What is planned for 0.2, and why each item is not in 0.1. Issues and 👍 reacti
   Pinning by SHA hardens that against a moved tag, and wants automated bumps in place first so the
   pins do not go stale.
 
-## Open questions
+## Signing, the catalog and Grafana Cloud
 
-**Signing and the plugin catalog.** Grafana signs a plugin offered by a for-profit business at the
-`commercial` level, which requires a paid Commercial Plugin Subscription with Grafana Labs. Until
-that is in place there is no signed build, so no catalog listing. Signing also needs a grafana.com
-organization whose verified slug matches the `cratedb-` plugin-id prefix.
-
-**Grafana Cloud.** Grafana Cloud runs only signed plugins and offers no override, so Cloud support
-arrives with signing. Self-hosted Grafana installs the unsigned release archive as described in the
-[README](README.md#installation).
+0.1 ships unsigned, which keeps it out of the plugin catalog and off Grafana Cloud;
+[Installation](README.md#installation) covers what stands in the way and how self-hosted Grafana
+loads the release archive meanwhile.
