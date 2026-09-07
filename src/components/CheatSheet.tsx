@@ -12,8 +12,7 @@ const LOGS_EXAMPLE: CrateDBQuery = {
   format: QueryFormat.Logs,
 };
 
-const ANNOTATION_QUERY_EXAMPLE =
-  `SELECT ts AS time, title AS text, array_to_string(tags, ',') AS tags FROM doc.demo_events WHERE $__timeFilter(ts)`;
+const ANNOTATION_QUERY_EXAMPLE = `SELECT ts AS time, title AS text, array_to_string(tags, ',') AS tags FROM doc.demo_events WHERE $__timeFilter(ts)`;
 
 // help panel behind the "?" in the query editor; shows the server-side
 // aggregation pattern
@@ -98,9 +97,9 @@ export function CheatSheet({ onClickExample }: QueryEditorHelpProps<CrateDBQuery
 
       <h2>Ad-hoc filters</h2>
       <p>
-        Ad-hoc filter keys are the filterable columns (<code>table.column</code>) of every table in the default
-        schema. On large schemas, add a dashboard constant or textbox variable named{' '}
-        <code>cratedb_adhoc_tables</code> with a comma-separated list of table names to narrow the key picker.
+        Ad-hoc filter keys are the filterable columns (<code>table.column</code>) of every table in the default schema.
+        On large schemas, add a dashboard constant or textbox variable named <code>cratedb_adhoc_tables</code> with a
+        comma-separated list of table names to narrow the key picker.
       </p>
 
       <h2>Query plans</h2>
@@ -121,13 +120,20 @@ export function CheatSheet({ onClickExample }: QueryEditorHelpProps<CrateDBQuery
           <code>sys.nodes</code>, <code>sys.shards</code>, <code>sys.jobs_log</code>).
         </li>
         <li>
-          <code>OBJECT</code> sub-columns are addressed as <code>&quot;tags&quot;[&apos;host&apos;]</code> and appear
-          under that name in autocomplete, e.g. <code>SELECT &quot;tags&quot;[&apos;host&apos;] FROM t</code>.
+          <code>OBJECT</code> sub-columns are addressed as <code>&quot;tags&quot;[&apos;host&apos;]</code>, e.g.{' '}
+          <code>SELECT &quot;tags&quot;[&apos;host&apos;] FROM t</code>. Autocomplete lists them the way{' '}
+          <code>information_schema</code> reports them, as <code>tags[&apos;host&apos;]</code>.
         </li>
         <li>
-          Arrays are expanded row-wise with <code>UNNEST</code> and tested with <code>ANY</code>, e.g.{' '}
-          <code>SELECT * FROM t WHERE &apos;deploy&apos; = ANY(tags)</code>. A whole <code>OBJECT</code> or array
-          column can be selected directly (it renders as JSON) but cannot be grouped by or equality-filtered.
+          Arrays are expanded with <code>UNNEST</code> in the select list, e.g.{' '}
+          <code>SELECT UNNEST(tags) AS tag FROM t</code>; <code>UNNEST</code> over a column of the same query&apos;s{' '}
+          <code>FROM</code> is unsupported. Membership is tested with <code>ANY</code>, e.g.{' '}
+          <code>SELECT * FROM t WHERE &apos;deploy&apos; = ANY(tags)</code>.
+        </li>
+        <li>
+          A whole <code>OBJECT</code> or array column can be selected and renders as JSON. Neither type compares against
+          a text literal, which is the only form an ad-hoc filter value takes, so such columns are not offered as ad-hoc
+          filter keys. A sub-column like <code>tags[&apos;host&apos;]</code> is.
         </li>
       </ul>
     </div>

@@ -17,9 +17,7 @@ describe('AdHocFilter', () => {
 
   it('injects a WHERE and quotes string values', () => {
     const f = new AdHocFilter('doc');
-    expect(f.apply('SELECT * FROM weather', [filter({})])).toBe(
-      `SELECT * FROM weather WHERE ("location" = 'Berlin')`
-    );
+    expect(f.apply('SELECT * FROM weather', [filter({})])).toBe(`SELECT * FROM weather WHERE ("location" = 'Berlin')`);
   });
 
   it('skips queries on other tables', () => {
@@ -30,7 +28,10 @@ describe('AdHocFilter', () => {
 
   it('joins multiple filters with AND', () => {
     const f = new AdHocFilter('doc');
-    const got = f.apply('SELECT * FROM weather', [filter({}), filter({ key: 'weather.temp', operator: '>', value: '20' })]);
+    const got = f.apply('SELECT * FROM weather', [
+      filter({}),
+      filter({ key: 'weather.temp', operator: '>', value: '20' }),
+    ]);
     expect(got).toContain(`WHERE ("location" = 'Berlin' AND "temp" > '20')`);
   });
 
@@ -46,28 +47,21 @@ describe('AdHocFilter', () => {
   });
 
   it.each([
-    ['=', '='],
-    ['!=', '!='],
-    ['<>', '<>'],
-    ['<', '<'],
-    ['<=', '<='],
-    ['>', '>'],
-    ['>=', '>='],
-    ['=~', '~'],
-    ['!~', '!~'],
-  ])('maps the %s operator to CrateDB syntax', (operator, sqlOperator) => {
+    ['=', `"location" = 'Berlin'`],
+    ['!=', `"location" != 'Berlin'`],
+    ['<>', `"location" <> 'Berlin'`],
+    ['<', `"location" < 'Berlin'`],
+    ['<=', `"location" <= 'Berlin'`],
+    ['>', `"location" > 'Berlin'`],
+    ['>=', `"location" >= 'Berlin'`],
+    ['=~', `"location" ~ 'Berlin'`],
+    ['!~', `"location" !~ 'Berlin'`],
+    ['IN', `"location" IN ('Berlin')`],
+    ['NOT IN', `"location" NOT IN ('Berlin')`],
+  ])('maps the %s operator to CrateDB syntax', (operator, expected) => {
     const f = new AdHocFilter('doc');
     const got = f.apply('SELECT * FROM weather', [filter({ operator, value: 'Berlin' })]);
-    expect(got).toContain(`"location" ${sqlOperator} 'Berlin'`);
-  });
-
-  it.each([
-    ['IN', 'IN'],
-    ['NOT IN', 'NOT IN'],
-  ])('maps the %s operator to CrateDB syntax', (operator, sqlOperator) => {
-    const f = new AdHocFilter('doc');
-    const got = f.apply('SELECT * FROM weather', [filter({ operator, value: 'Berlin' })]);
-    expect(got).toContain(`"location" ${sqlOperator} ('Berlin')`);
+    expect(got).toContain(expected);
   });
 
   it('ignores filters whose operator is not on the allowlist', () => {
@@ -88,16 +82,14 @@ describe('AdHocFilter', () => {
     expect(f.apply('SELECT * FROM weather', [filter({ value: 'C:\\data' })])).toContain(`'C:\\data'`);
   });
 
-  it('passes unicode values through unquoted-escaping', () => {
+  it('keeps a non-ASCII value intact', () => {
     const f = new AdHocFilter('doc');
     expect(f.apply('SELECT * FROM weather', [filter({ value: 'Zürich 東京' })])).toContain(`'Zürich 東京'`);
   });
 
   it('strips a trailing semicolon', () => {
     const f = new AdHocFilter('doc');
-    expect(f.apply('SELECT * FROM weather;', [filter({})])).toBe(
-      `SELECT * FROM weather WHERE ("location" = 'Berlin')`
-    );
+    expect(f.apply('SELECT * FROM weather;', [filter({})])).toBe(`SELECT * FROM weather WHERE ("location" = 'Berlin')`);
   });
 
   it('skips filters whose key has no table prefix', () => {

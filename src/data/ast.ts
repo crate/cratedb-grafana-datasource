@@ -10,14 +10,17 @@ function sanitizeForParse(sql: string): string {
   return sql.replace(/\$\{[\w:.]+\}|\$[a-zA-Z_]\w*/g, (match) => 'g'.padEnd(match.length, 'x'));
 }
 
-function parseSelect(sql: string): SelectFromStatement | null {
-  let stm: Statement | undefined;
+function parseStatement(sql: string): Statement | null {
   try {
-    stm = parse(sanitizeForParse(sql), { locationTracking: true })[0];
+    return parse(sanitizeForParse(sql), { locationTracking: true })[0] ?? null;
   } catch {
     return null;
   }
-  return stm && stm.type === 'select' ? stm : null;
+}
+
+function parseSelect(sql: string): SelectFromStatement | null {
+  const stm = parseStatement(sql);
+  return stm?.type === 'select' ? stm : null;
 }
 
 function qualify(name: { schema?: string; name: string }): string {
@@ -51,4 +54,47 @@ export function injectPredicate(sql: string, predicate: string): string | null {
     return null;
   }
   return `${sql.slice(0, fromEnd)} WHERE (${predicate})${sql.slice(fromEnd)}`;
+}
+
+// every table the statement names, across union branches, derived tables and CTE
+// bodies. A name bound by a WITH resolves to that CTE rather than to a table, so it
+// is dropped from the result.
+export function referencedTables(sql: string): string[] {
+  const tables: string[] = [];
+  const bound = new Set<string>();
+  collectTables(parseStatement(sql), tables, bound);
+  return tables.filter((table) => !bound.has(table));
+}
+
+function collectTables(stm: Statement | null | undefined, tables: string[], bound: Set<string>): void {
+  switch (stm?.type) {
+    case 'select':
+      for (const from of stm.from ?? []) {
+        if (from.type === 'table') {
+          tables.push(qualify(from.name));
+        } else if (from.type === 'statement') {
+          collectTables(from.statement, tables, bound);
+        }
+      }
+      return;
+    case 'union':
+    case 'union all':
+      collectTables(stm.left, tables, bound);
+      collectTables(stm.right, tables, bound);
+      return;
+    case 'with':
+      for (const bind of stm.bind) {
+        bound.add(bind.alias.name);
+        collectTables(bind.statement, tables, bound);
+      }
+      collectTables(stm.in, tables, bound);
+      return;
+    case 'with recursive':
+      bound.add(stm.alias.name);
+      collectTables(stm.bind, tables, bound);
+      collectTables(stm.in, tables, bound);
+      return;
+    default:
+      return;
+  }
 }

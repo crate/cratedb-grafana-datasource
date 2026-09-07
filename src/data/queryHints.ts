@@ -1,7 +1,7 @@
 import { DataQueryRequest, DataQueryResponse, QueryResultMetaNotice } from '@grafana/data';
 
 import { CrateDBQuery } from '../types';
-import { getTable } from './ast';
+import { referencedTables } from './ast';
 import { stripComments } from './formatDetection';
 
 // the macros that bind a query to the panel time range
@@ -16,11 +16,10 @@ export function hasTimeBound(rawSql: string): boolean {
 }
 
 // sys.* tables are cluster-monitoring snapshots with no time column, so the
-// time-bound notice doesn't apply to them
-function isSysTable(rawSql: string): boolean {
-  const table = getTable(rawSql);
-  const schema = table.includes('.') ? table.split('.')[0] : '';
-  return schema.toLowerCase() === 'sys';
+// time-bound notice doesn't apply to a query that reads nothing else
+function readsOnlySysTables(rawSql: string): boolean {
+  const tables = referencedTables(rawSql);
+  return tables.length > 0 && tables.every((table) => table.split('.')[0].toLowerCase() === 'sys');
 }
 
 const NOTICE: QueryResultMetaNotice = {
@@ -40,7 +39,12 @@ export function attachTimeBoundNotices(
   const unbounded = new Set(
     request.targets
       .filter(
-        (t) => !t.hide && !INTERNAL_REF_IDS.has(t.refId) && t.rawSql && !hasTimeBound(t.rawSql) && !isSysTable(t.rawSql)
+        (t) =>
+          !t.hide &&
+          !INTERNAL_REF_IDS.has(t.refId) &&
+          t.rawSql &&
+          !hasTimeBound(t.rawSql) &&
+          !readsOnlySysTables(t.rawSql)
       )
       .map((t) => t.refId)
   );

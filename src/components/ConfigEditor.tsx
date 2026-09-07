@@ -8,7 +8,16 @@ import {
 } from '@grafana/data';
 import { ConfigSection, ConfigSubSection, DataSourceDescription } from '@grafana/plugin-ui';
 import { config } from '@grafana/runtime';
-import { Combobox, ComboboxOption, Divider, Field, InlineSwitch, Input, SecretInput, SecretTextArea } from '@grafana/ui';
+import {
+  Combobox,
+  ComboboxOption,
+  Divider,
+  Field,
+  InlineSwitch,
+  Input,
+  SecretInput,
+  SecretTextArea,
+} from '@grafana/ui';
 
 import { DEFAULTS, DOCS_URL } from '../constants';
 import { joinHostURL, splitHostURL } from '../data/hostUrl';
@@ -88,7 +97,14 @@ export function ConfigEditor(props: Props) {
           invalid={!!httpPortWarning}
           error={httpPortWarning}
         >
-          <Input id="host" name="host" width={40} value={hostUrl} placeholder="localhost:5432" onChange={onHostURLChange} />
+          <Input
+            id="host"
+            name="host"
+            width={40}
+            value={hostUrl}
+            placeholder="localhost:5432"
+            onChange={onHostURLChange}
+          />
         </Field>
         <Field
           label="Default schema"
@@ -131,10 +147,7 @@ export function ConfigEditor(props: Props) {
             onReset={() => updateDatasourcePluginResetOption(props, 'password')}
           />
         </Field>
-        <Field
-          label="TLS/SSL Mode"
-          description="Whether, and how strictly, to negotiate TLS with the server."
-        >
+        <Field label="TLS/SSL Mode" description="Whether, and how strictly, to negotiate TLS with the server.">
           <Combobox
             id="tlsMode"
             options={TLS_MODES}
@@ -327,10 +340,7 @@ export function ConfigEditor(props: Props) {
         </ConfigSubSection>
 
         <ConfigSubSection title="Connection limits">
-          <Field
-            label="Max open"
-            description="Maximum open connections to the database (0 = unlimited)."
-          >
+          <Field label="Max open" description="Maximum open connections to the database. Empty or 0 uses 100.">
             <Input
               id="maxOpenConnections"
               name="maxOpenConnections"
@@ -341,7 +351,7 @@ export function ConfigEditor(props: Props) {
               onChange={onNumberOption('maxOpenConnections')}
             />
           </Field>
-          <Field label="Max idle" description="The maximum number of connections in the idle connection pool.">
+          <Field label="Max idle" description="Connections kept in the idle pool. Empty or 0 uses 100.">
             <Input
               id="maxIdleConnections"
               name="maxIdleConnections"
@@ -354,7 +364,7 @@ export function ConfigEditor(props: Props) {
           </Field>
           <Field
             label="Max lifetime"
-            description="Seconds a connection may be reused before it's recycled (0 = forever)."
+            description="Seconds a connection may be reused before it's recycled. Empty or 0 uses 14400."
           >
             <Input
               id="maxConnectionLifetime"

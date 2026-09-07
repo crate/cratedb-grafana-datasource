@@ -32,8 +32,8 @@ import { CrateDBVariableSupport } from './variables';
 // cap for the DISTINCT scan behind ad-hoc value dropdowns
 const ADHOC_VALUES_LIMIT = 1000;
 
-// a constant/textbox variable (comma-separated, optionally schema-qualified table
-// names) narrows which tables feed the ad-hoc key picker
+// a constant/textbox variable of comma-separated table names narrows which tables feed
+// the ad-hoc key picker; keys come from the default schema, so only its qualifier is read
 export const ADHOC_SCOPE_VARIABLE = 'cratedb_adhoc_tables';
 
 function adhocScopeTables(defaultSchema: string): string[] | undefined {

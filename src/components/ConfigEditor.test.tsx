@@ -190,18 +190,16 @@ describe('ConfigEditor additional settings', () => {
     );
   });
 
-  it.each([
-    [true, true],
-    [false, false],
-  ])('sets the cache TTL input disabled to match disableSchemaCache=%s', async (disableSchemaCache, disabled) => {
-    render(<ConfigEditor {...makeProps({ disableSchemaCache })} />);
-    await openAdditional();
+  it.each([[true], [false]])(
+    'sets the cache TTL input disabled to match disableSchemaCache=%s',
+    async (disableSchemaCache) => {
+      render(<ConfigEditor {...makeProps({ disableSchemaCache })} />);
+      await openAdditional();
 
-    const input = document.querySelector('input[name="schemaCacheTTLSeconds"]');
-    if (disabled) {
-      expect(input).toBeDisabled();
-    } else {
-      expect(input).not.toBeDisabled();
+      expect(document.querySelector('input[name="schemaCacheTTLSeconds"]')).toHaveProperty(
+        'disabled',
+        disableSchemaCache
+      );
     }
-  });
+  );
 });

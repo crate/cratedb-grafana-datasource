@@ -9,7 +9,7 @@ describe('hasTimeBound', () => {
     'SELECT * FROM t WHERE $__dateFilter(day)',
     'SELECT * FROM t WHERE ts >= $__fromTime',
     'SELECT * FROM t WHERE epoch BETWEEN $__unixEpochFilter(epoch)',
-    "SELECT * FROM t WHERE ts > $__timeFrom()",
+    'SELECT * FROM t WHERE ts > $__timeFrom()',
   ])('finds the bound in %s', (sql) => {
     expect(hasTimeBound(sql)).toBe(true);
   });
@@ -45,10 +45,7 @@ function makeResponse(frames: Array<{ refId: string; meta?: Record<string, unkno
 
 describe('attachTimeBoundNotices', () => {
   it('stamps an info notice on frames of unbounded queries only', () => {
-    const request = makeRequest([
-      { rawSql: 'SELECT * FROM t' },
-      { rawSql: 'SELECT * FROM t WHERE $__timeFilter(ts)' },
-    ]);
+    const request = makeRequest([{ rawSql: 'SELECT * FROM t' }, { rawSql: 'SELECT * FROM t WHERE $__timeFilter(ts)' }]);
     const response = makeResponse([{ refId: 'A' }, { refId: 'B' }]);
 
     attachTimeBoundNotices(request, response);
@@ -65,15 +62,27 @@ describe('attachTimeBoundNotices', () => {
       { rawSql: 'SELECT health FROM sys.cluster_health' },
       { rawSql: 'SELECT count(*) FROM doc.metrics' },
       { rawSql: 'SELECT * FROM "sys"."nodes"' },
+      {
+        rawSql:
+          "SELECT 'cluster' AS scope, severity, description FROM sys.checks WHERE NOT passed\n" +
+          'UNION ALL\n' +
+          'SELECT node_id AS scope, severity, description FROM sys.node_checks WHERE NOT passed\n' +
+          'ORDER BY severity DESC',
+      },
+      { rawSql: 'SELECT * FROM sys.nodes JOIN doc.metrics ON 1 = 1' },
     ]);
-    const response = makeResponse([{ refId: 'A' }, { refId: 'B' }, { refId: 'C' }]);
+    const response = makeResponse([{ refId: 'A' }, { refId: 'B' }, { refId: 'C' }, { refId: 'D' }, { refId: 'E' }]);
 
     attachTimeBoundNotices(request, response);
 
-    const [sysDotted, doc, sysQuoted] = response.data as Array<{ meta?: { notices?: unknown[] } }>;
+    const [sysDotted, doc, sysQuoted, sysUnion, mixedJoin] = response.data as Array<{
+      meta?: { notices?: unknown[] };
+    }>;
     expect(sysDotted.meta?.notices).toBeUndefined();
     expect(doc.meta?.notices).toHaveLength(1);
     expect(sysQuoted.meta?.notices).toBeUndefined();
+    expect(sysUnion.meta?.notices).toBeUndefined();
+    expect(mixedJoin.meta?.notices).toHaveLength(1);
   });
 
   it('keeps existing notices', () => {

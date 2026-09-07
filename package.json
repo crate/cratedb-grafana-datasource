@@ -4,7 +4,7 @@
   "description": "CrateDB datasource plugin for Grafana",
   "repository": {
     "type": "git",
-    "url": "https://github.com/crate/cratedb-grafana-datasource.git"
+    "url": "git+https://github.com/crate/cratedb-grafana-datasource.git"
   },
   "homepage": "https://github.com/crate/cratedb-grafana-datasource#readme",
   "bugs": {

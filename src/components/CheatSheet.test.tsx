@@ -78,10 +78,11 @@ describe('CheatSheet reference content', () => {
     expect(screen.getAllByText(/array_to_string/).length).toBeGreaterThan(0);
   });
 
-  it('documents OBJECT and array addressing', () => {
+  it('documents OBJECT and array addressing and why neither is an ad-hoc filter key', () => {
     renderSheet();
 
     expect(screen.getAllByText(/OBJECT/).length).toBeGreaterThan(0);
-    expect(screen.getByText(/UNNEST/)).toBeInTheDocument();
+    expect(screen.getAllByText(/UNNEST/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/not offered as ad-hoc filter keys/)).toBeInTheDocument();
   });
 });
