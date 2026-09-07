@@ -1,5 +1,3 @@
-// The autocomplete routes read information_schema; CrateDB's pg_catalog emulation
-// is partial.
 package plugin
 
 import (
@@ -10,6 +8,8 @@ import (
 	"github.com/grafana/sqlds/v5"
 )
 
+// The autocomplete routes read information_schema; CrateDB's pg_catalog emulation
+// is partial.
 const (
 	// sys is kept: cluster-monitoring dashboards query sys.*; only machinery schemas are hidden
 	schemasQuery = `SELECT schema_name FROM information_schema.schemata

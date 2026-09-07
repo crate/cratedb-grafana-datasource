@@ -1,6 +1,3 @@
-// The /column-meta route carries data types alongside column names, which the
-// query builder needs to pick default time and log columns and to shape filter
-// value editors; sqlds' own /columns route is names only.
 package plugin
 
 import (
@@ -13,6 +10,9 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/tracing"
 )
 
+// The /column-meta route carries data types alongside column names, which the
+// query builder needs to pick default time and log columns and to shape filter
+// value editors; sqlds' own /columns route is names only.
 const columnMetaQuery = `SELECT column_name, data_type FROM information_schema.columns
 	WHERE table_schema = $1 AND table_name = $2
 	ORDER BY ordinal_position`

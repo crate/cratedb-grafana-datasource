@@ -49,8 +49,9 @@ func (c *schemaCache) get(key string) []string {
 	return values
 }
 
-// put stores values under key for the configured TTL, dropping entries that have
-// expired since the last sweep (a key nobody reads again is never evicted by get).
+// put stores a copy of values under key for the configured TTL, dropping entries
+// that have expired since the last sweep (a key nobody reads again is never
+// evicted by get).
 func (c *schemaCache) put(key string, values []string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -63,7 +64,9 @@ func (c *schemaCache) put(key string, values []string) {
 			delete(c.entries, existing)
 		}
 	}
-	c.entries[key] = schemaCacheEntry{values: values, expires: now.Add(c.ttl)}
+	stored := make([]string, len(values))
+	copy(stored, values)
+	c.entries[key] = schemaCacheEntry{values: stored, expires: now.Add(c.ttl)}
 }
 
 // cacheKey joins the query with its arguments into a stable key.

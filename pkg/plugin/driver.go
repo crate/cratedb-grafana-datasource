@@ -187,10 +187,11 @@ func (d *CrateDB) PreCheckHealth(ctx context.Context, req *backend.CheckHealthRe
 }
 
 // configureTLS injects inline PEM material from secure JSON into pgx's tls.Config
-// (pgx only loads certs from files). sslmode semantics survive: require is unverified,
-// verify-ca checks the CA, verify-full also the hostname.
+// (pgx only loads certs from files). sslmode semantics survive: require is unverified
+// unless a CA is configured, which libpq reads as verify-ca; verify-ca checks the CA,
+// verify-full also the hostname.
 func configureTLS(cc *pgx.ConnConfig, settings Settings) error {
-	if settings.TLSMode == "disable" || settings.TLSMode == "" {
+	if settings.TLSMode == "disable" {
 		return nil
 	}
 	// file-path method: pgx already loaded sslrootcert/sslcert/sslkey from the
@@ -203,29 +204,42 @@ func configureTLS(cc *pgx.ConnConfig, settings Settings) error {
 	if (settings.TLSClientCert == "") != (settings.TLSClientKey == "") {
 		return errors.New("TLS client certificate and key must both be specified")
 	}
-	tlsConfig := cc.TLSConfig
-	if tlsConfig == nil {
-		tlsConfig = &tls.Config{} //nolint:gosec // verification level is governed by sslmode
-		cc.TLSConfig = tlsConfig
-	}
+	var pool *x509.CertPool
 	if settings.TLSCACert != "" {
-		pool := x509.NewCertPool()
+		pool = x509.NewCertPool()
 		if !pool.AppendCertsFromPEM([]byte(settings.TLSCACert)) {
 			return ErrInvalidCACertificate
 		}
-		tlsConfig.RootCAs = pool
-		if settings.TLSMode == "require" {
-			// libpq reads require plus a root certificate as verify-ca; pgx applies
-			// that only when the CA arrives as a file path.
-			tlsConfig.VerifyPeerCertificate = verifyChainOnly(tlsConfig)
-		}
 	}
+	var clientCert *tls.Certificate
 	if settings.TLSClientCert != "" {
-		cert, err := tls.X509KeyPair([]byte(settings.TLSClientCert), []byte(settings.TLSClientKey))
+		pair, err := tls.X509KeyPair([]byte(settings.TLSClientCert), []byte(settings.TLSClientKey))
 		if err != nil {
 			return fmt.Errorf("could not load client certificate pair: %w", err)
 		}
-		tlsConfig.Certificates = []tls.Certificate{cert}
+		clientCert = &pair
+	}
+	if cc.TLSConfig == nil {
+		cc.TLSConfig = &tls.Config{} //nolint:gosec // verification level is governed by sslmode
+	}
+	// pgx derives one tls.Config per host of a comma-separated server list, the
+	// first on the config and the rest on its fallbacks.
+	tlsConfigs := []*tls.Config{cc.TLSConfig}
+	for _, fallback := range cc.Fallbacks {
+		if fallback.TLSConfig != nil {
+			tlsConfigs = append(tlsConfigs, fallback.TLSConfig)
+		}
+	}
+	for _, tlsConfig := range tlsConfigs {
+		if pool != nil {
+			tlsConfig.RootCAs = pool
+			if settings.TLSMode == "require" {
+				tlsConfig.VerifyPeerCertificate = verifyChainOnly(tlsConfig)
+			}
+		}
+		if clientCert != nil {
+			tlsConfig.Certificates = []tls.Certificate{*clientCert}
+		}
 	}
 	return nil
 }

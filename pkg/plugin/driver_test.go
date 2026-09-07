@@ -209,6 +209,24 @@ func TestConfigureTLS(t *testing.T) {
 		assert.ErrorContains(t, configureTLS(cc, settings), "could not load client certificate pair")
 	})
 
+	t.Run("every host in the server list gets the inline material", func(t *testing.T) {
+		settings := base
+		settings.Server = "cratedb-a.example.org,cratedb-b.example.org"
+		settings.TLSMode = "require"
+		settings.TLSCACert = ca.pem
+		settings.TLSClientCert = clientCert
+		settings.TLSClientKey = clientKey
+		cc := parsedConfig(t, settings)
+		require.NotEmpty(t, cc.Fallbacks, "pgx builds one config per host")
+		require.NoError(t, configureTLS(cc, settings))
+		for _, fallback := range cc.Fallbacks {
+			require.NotNil(t, fallback.TLSConfig)
+			assert.NotNil(t, fallback.TLSConfig.RootCAs)
+			assert.NotNil(t, fallback.TLSConfig.VerifyPeerCertificate)
+			assert.Len(t, fallback.TLSConfig.Certificates, 1)
+		}
+	})
+
 	t.Run("file-path material is left to pgx", func(t *testing.T) {
 		settings := base
 		settings.TLSMode = "verify-full"
@@ -221,8 +239,8 @@ func TestConfigureTLS(t *testing.T) {
 }
 
 func TestOpenKeepsThePasswordOutOfErrors(t *testing.T) {
-	// pgx's redaction of the connection string it echoes stops at the escaped
-	// quote, so this password is the one whose tail leaks
+	// the quote-plus-space shape is what pgx's redaction of an echoed connection
+	// string fails to cover
 	const password = `pa'ss w0rd`
 	settings := Settings{
 		Server: "cratedb.example.org", Port: 5432, Username: "crate", TLSMode: "verify-ca",

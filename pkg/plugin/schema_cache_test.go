@@ -54,6 +54,15 @@ func TestSchemaCache(t *testing.T) {
 		assert.Empty(t, c.get("k"))
 	})
 
+	t.Run("a caller mutating the slice it stored can't corrupt the cache", func(t *testing.T) {
+		var c schemaCache
+		c.reset(time.Minute)
+		values := []string{"a"}
+		c.put("k", values)
+		values[0] = "mutated by the caller"
+		assert.Equal(t, []string{"a"}, c.get("k"))
+	})
+
 	t.Run("put evicts entries nobody read back", func(t *testing.T) {
 		var c schemaCache
 		c.reset(10 * time.Millisecond)
