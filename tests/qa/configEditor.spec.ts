@@ -4,26 +4,23 @@ import type { Page } from '@playwright/test';
 const NEW_DATASOURCE = '/connections/datasources/new';
 
 // A fresh data source page for the CrateDB plugin, without touching the
-// provisioned one the other specs read from.
-async function createDatasource(page: Page, name: string) {
+// provisioned one the other specs read from. Returns the uid Grafana assigned,
+// which is what the cleanup deletes: the page names the data source itself.
+async function createDatasource(page: Page): Promise<string> {
   await page.goto(NEW_DATASOURCE);
   await page.getByText('CrateDB', { exact: true }).first().click();
   await expect(page.getByRole('textbox', { name: 'Host URL' })).toBeVisible({ timeout: 30_000 });
-  const nameField = page.getByRole('textbox', { name: 'Name' });
-  await nameField.fill(name);
+  const uid = new URL(page.url()).pathname.split('/').pop();
+  expect(uid).toBeTruthy();
+  return uid as string;
 }
 
-async function deleteDatasource(page: Page, name: string) {
-  const response = await page.request.get(`/api/datasources/name/${encodeURIComponent(name)}`);
-  if (response.ok()) {
-    const { uid } = await response.json();
-    await page.request.delete(`/api/datasources/uid/${uid}`);
-  }
+async function deleteDatasource(page: Page, uid: string) {
+  await page.request.delete(`/api/datasources/uid/${uid}`);
 }
 
 test('the config page walks its fields, sections and warnings', async ({ page, shot, browserProblems }) => {
-  const name = 'QA config walk';
-  await createDatasource(page, name);
+  const uid = await createDatasource(page);
   try {
     await shot('fresh');
 
@@ -65,13 +62,12 @@ test('the config page walks its fields, sections and warnings', async ({ page, s
 
     expect(browserProblems).toEqual([]);
   } finally {
-    await deleteDatasource(page, name);
+    await deleteDatasource(page, uid);
   }
 });
 
 test('the health check reports what is wrong', async ({ page, shot }) => {
-  const name = 'QA health check';
-  await createDatasource(page, name);
+  const uid = await createDatasource(page);
   try {
     await page.getByRole('textbox', { name: 'Host URL' }).fill('cratedb:5432');
     await page.getByRole('textbox', { name: 'Username' }).fill('crate');
@@ -93,6 +89,6 @@ test('the health check reports what is wrong', async ({ page, shot }) => {
     await expect(failure).toContainText(/resolve|reach/i);
     await shot('health-unresolvable');
   } finally {
-    await deleteDatasource(page, name);
+    await deleteDatasource(page, uid);
   }
 });
