@@ -16,8 +16,9 @@ Initial release.
   `previous` fills the buckets a query returned no rows for), `$__unixEpochFilter`,
   `$__unixEpochFrom`/`To`, `$__unixEpochGroup(Alias)`, the nanosecond `$__unixEpochNano*` forms,
   `$__interval_s`, and `$__conditionalAll`. A numeric column named `time` in a time-series query
-  becomes the time axis, its unit read from its magnitude as in the PostgreSQL data source. Most
-  macros resolve backend-side, so alerting works identically.
+  becomes the time axis, its unit read from its magnitude as in the PostgreSQL data source, and
+  a label column beside it splits the result into one series per label. Most macros resolve
+  backend-side, so alerting works identically.
 - **Visual query builder**: new queries open in a builder with Table, Time series, and Logs
   flavors — schema/table pickers backed by `information_schema`, typed filter rows, aggregations
   with grouping, order/limit. Picking a table is enough to produce the recommended
