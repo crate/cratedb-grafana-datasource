@@ -2,8 +2,10 @@ package plugin
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,8 +21,8 @@ import (
 // materialise a frame the size of the range divided by the width.
 const maxFilledBuckets = 100_000
 
-// timeSeriesPlan carries what the response step needs and the frame no longer
-// holds: the requested format, the panel range, and the bucket width and fill
+// timeSeriesPlan carries what the response step needs and the frame does not
+// hold: the requested format, the panel range, and the bucket width and fill
 // mode of the query's group macro.
 type timeSeriesPlan struct {
 	format   sqlutil.FormatQueryOption
@@ -33,9 +35,9 @@ type timeSeriesPlan struct {
 type timeSeriesPlansKey struct{}
 
 // MutateQueryData records a plan per RefID while the macros are still in the
-// SQL. sqlds only threads the context it returns here into MutateResponse — the
-// one MutateQuery returns reaches interpolation and stops there — and a frame
-// carries its RefID in Name.
+// SQL. This is the hook to hang it on: the context MutateQuery returns reaches
+// interpolation and stops there, never MutateResponse. The key is the RefID
+// because that is all a frame carries of its query, in Name.
 func (d *CrateDB) MutateQueryData(ctx context.Context, req *backend.QueryDataRequest) (context.Context, *backend.QueryDataRequest) {
 	plans := make(map[string]timeSeriesPlan, len(req.Queries))
 	for _, dataQuery := range req.Queries {
@@ -85,8 +87,7 @@ func (d *CrateDB) MutateResponse(ctx context.Context, frames data.Frames) (data.
 }
 
 // promoteNumericTimeField turns a numeric column named "time" into the frame's
-// time axis the way Grafana's built-in SQL data sources do: the value is epoch
-// seconds, and a fractional part is sub-second precision. NULLs stay NULL.
+// time axis. NULLs stay NULL.
 func promoteNumericTimeField(frame *data.Frame) {
 	for i, field := range frame.Fields {
 		if !strings.EqualFold(field.Name, "time") || !field.Type().Numeric() {
@@ -98,15 +99,29 @@ func promoteNumericTimeField(frame *data.Frame) {
 			if field.NilAt(row) {
 				continue
 			}
-			seconds, err := field.FloatAt(row)
+			epoch, err := field.FloatAt(row)
 			if err != nil {
 				continue
 			}
-			whole, fraction := math.Modf(seconds)
-			times.SetConcrete(row, time.Unix(int64(whole), int64(math.Round(fraction*float64(time.Second)))).UTC())
+			times.SetConcrete(row, time.UnixMilli(int64(epochPrecisionToMS(epoch))).UTC())
 		}
 		frame.Fields[i] = times
 	}
+}
+
+// epochPrecisionToMS reads a numeric epoch at the resolution its magnitude
+// implies, matching Grafana's built-in SQL data sources: the 1e9 decade is
+// seconds and the 1e18 decade nanoseconds, so a CrateDB timestamp cast to an
+// integer falls through to milliseconds.
+func epochPrecisionToMS(value float64) float64 {
+	scientific := strconv.FormatFloat(value, 'e', -1, 64)
+	switch {
+	case strings.HasSuffix(scientific, "e+09"):
+		return value * 1e3
+	case strings.HasSuffix(scientific, "e+18"):
+		return value / float64(time.Millisecond)
+	}
+	return value
 }
 
 // fillBuckets returns the frame with a row at every bucket boundary inside the
@@ -134,7 +149,7 @@ func fillBuckets(frame *data.Frame, plan timeSeriesPlan) *data.Frame {
 		if !ok {
 			// a NULL timestamp belongs to no bucket; keep the row ahead of every
 			// boundary rather than dropping it
-			merged = append(merged, filledRow{at: math.MinInt64, source: row})
+			merged = append(merged, filledRow{at: nullBucket, source: row})
 			continue
 		}
 		stamp := at.(time.Time).UnixMilli()
@@ -142,8 +157,12 @@ func fillBuckets(frame *data.Frame, plan timeSeriesPlan) *data.Frame {
 		merged = append(merged, filledRow{at: stamp, source: row})
 	}
 
-	first, last := ceilTo(plan.from.UnixMilli(), step), plan.to.UnixMilli()
+	first, last := floorTo(plan.from.UnixMilli(), step), plan.to.UnixMilli()
 	if last >= first && (last-first)/step >= maxFilledBuckets {
+		frame.AppendNotices(data.Notice{
+			Severity: data.NoticeSeverityWarning,
+			Text:     fmt.Sprintf("Gaps were left unfilled: the bucket width and the panel range would add more than %d rows.", maxFilledBuckets),
+		})
 		return frame
 	}
 	gaps := 0
@@ -161,7 +180,7 @@ func fillBuckets(frame *data.Frame, plan timeSeriesPlan) *data.Frame {
 
 	filled := data.NewFrame(frame.Name)
 	filled.RefID, filled.Meta = frame.RefID, frame.Meta
-	leadingGap := merged[0].source < 0
+	leadingGap := firstBucketIsInserted(merged)
 	for i, field := range frame.Fields {
 		fieldType := field.Type()
 		if i != timeIdx && fillCanLeaveEmpty(plan.fill, fieldType, leadingGap) {
@@ -172,6 +191,7 @@ func fillBuckets(frame *data.Frame, plan timeSeriesPlan) *data.Frame {
 		filled.Fields = append(filled.Fields, column)
 	}
 
+	previousRow := -1
 	for row, entry := range merged {
 		for i := range frame.Fields {
 			switch {
@@ -180,18 +200,36 @@ func fillBuckets(frame *data.Frame, plan timeSeriesPlan) *data.Frame {
 			case i == timeIdx:
 				filled.SetConcrete(i, row, time.UnixMilli(entry.at).UTC())
 			default:
-				setFillCell(filled, i, row, plan.fill)
+				setFillCell(filled, i, row, previousRow, plan.fill)
 			}
+		}
+		if entry.at != nullBucket {
+			previousRow = row
 		}
 	}
 	return filled
 }
+
+// nullBucket sorts a row whose timestamp is NULL ahead of every boundary. Such
+// a row belongs to no bucket, so it neither fills one nor seeds a previous fill.
+const nullBucket = math.MinInt64
 
 // filledRow is one output row: a bucket timestamp and the index of the query row
 // it came from, or -1 for an inserted boundary.
 type filledRow struct {
 	at     int64
 	source int
+}
+
+// firstBucketIsInserted reports whether the earliest bucketed row is one the
+// fill added, which is what leaves a previous fill with nothing to carry.
+func firstBucketIsInserted(merged []filledRow) bool {
+	for _, entry := range merged {
+		if entry.at != nullBucket {
+			return entry.source < 0
+		}
+	}
+	return false
 }
 
 func soleTimeField(frame *data.Frame) (int, bool) {
@@ -235,17 +273,17 @@ func copyCell(filled, source *data.Frame, fieldIdx, row, sourceRow int) {
 // setFillCell writes the fill value into an inserted bucket. FillNull, and any
 // value with no representation in the field's type, leave the nil the field was
 // created with.
-func setFillCell(filled *data.Frame, fieldIdx, row int, fill macros.Fill) {
+func setFillCell(filled *data.Frame, fieldIdx, row, previousRow int, fill macros.Fill) {
 	switch fill.Mode {
 	case macros.FillValue:
 		if value, ok := numericFill(filled.Fields[fieldIdx].Type(), fill.Value); ok {
 			filled.SetConcrete(fieldIdx, row, value)
 		}
 	case macros.FillPrevious:
-		if row == 0 {
+		if previousRow < 0 {
 			return
 		}
-		if previous, ok := filled.ConcreteAt(fieldIdx, row-1); ok {
+		if previous, ok := filled.ConcreteAt(fieldIdx, previousRow); ok {
 			filled.SetConcrete(fieldIdx, row, previous)
 		}
 	}
@@ -278,15 +316,13 @@ func numericFill(fieldType data.FieldType, value float64) (any, bool) {
 	return nil, false
 }
 
-// ceilTo rounds ms up to the next DATE_BIN boundary of width step, flooring
-// toward negative infinity for pre-epoch instants.
-func ceilTo(ms, step int64) int64 {
+// floorTo rounds ms down to the DATE_BIN boundary of width step, toward
+// negative infinity for pre-epoch instants. A panel range rarely starts on a
+// boundary, and the rows in its first bucket carry the boundary before it.
+func floorTo(ms, step int64) int64 {
 	remainder := ms % step
-	if remainder == 0 {
-		return ms
-	}
 	if remainder < 0 {
-		return ms - remainder
+		remainder += step
 	}
-	return ms - remainder + step
+	return ms - remainder
 }

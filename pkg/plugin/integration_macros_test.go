@@ -153,6 +153,16 @@ func TestIntegrationEpochMacrosYieldATimeAxis(t *testing.T) {
 				AND $__unixEpochNanoFilter("nanos") GROUP BY 1 ORDER BY 1`,
 		},
 		{
+			"millisecond column",
+			`SELECT "ts"::bigint AS "time", count(*) AS "value" FROM doc.epochs
+				WHERE $__timeFilter("ts") GROUP BY 1 ORDER BY 1`,
+		},
+		{
+			"nanosecond column",
+			`SELECT "nanos" AS "time", count(*) AS "value" FROM doc.epochs
+				WHERE $__unixEpochNanoFilter("nanos") GROUP BY 1 ORDER BY 1`,
+		},
+		{
 			"unixEpoch bounds",
 			`SELECT $__time("ts"), count(*) AS "value" FROM doc.epochs
 				WHERE "seconds" BETWEEN $__unixEpochFrom() AND $__unixEpochTo() GROUP BY 1 ORDER BY 1`,

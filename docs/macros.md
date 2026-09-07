@@ -54,11 +54,17 @@ buckets to the result. Every bucket boundary between the panel range's start and
 query returned no row for gets one row, carrying the fill value in every column but the
 timestamp; the rows the query did return keep their values. `NULL` leaves a hole the panel
 draws as a break, a number inserts that value, and `previous` repeats the last value before
-the gap.
+the gap. Boundaries are aligned the way `DATE_BIN` aligns them, so a range starting mid-bucket
+still gets that bucket. Filling is skipped, with a warning on the panel, when the bucket width
+and the range would add more than 100000 rows, and it is skipped for the `multi` format and for
+a frame that holds several series per bucket in long form.
 
 **A numeric `time` column becomes the time axis.** In a time-series query, a column named
-`time` holding integers or floats is read as epoch seconds, so `$__timeEpoch` and
-`$__unixEpochGroupAlias` plot without a cast.
+`time` holding integers or floats is read as an epoch timestamp, and its magnitude picks the
+unit the way Grafana's built-in SQL data sources do: values in the 1e9 decade are seconds,
+values in the 1e18 decade nanoseconds, everything else milliseconds. That covers `$__timeEpoch`
+and `$__unixEpochGroupAlias`, which yield seconds, and `"ts"::bigint`, which yields CrateDB's
+native milliseconds. All of them plot without a cast.
 
 ## Time-series template
 

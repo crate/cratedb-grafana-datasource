@@ -87,6 +87,26 @@ func TestRewriteTrailingTimeGroup(t *testing.T) {
 			`SELECT $__timeGroup("ts", '1m', 0), count(*) FROM t`,
 			`SELECT $__timeGroupAlias("ts", '1m', 0), count(*) FROM t`,
 		},
+		{
+			"a line comment holding FROM does not close the projection",
+			"SELECT\n  -- pick FROM the table\n  $__timeGroup(\"ts\", '1m'), host\nFROM t",
+			"SELECT\n  -- pick FROM the table\n  $__timeGroupAlias(\"ts\", '1m'), host\nFROM t",
+		},
+		{
+			"an apostrophe in a line comment does not open a literal",
+			"SELECT a -- don't\n, $__timeGroup(\"ts\", '1m'), host FROM t",
+			"SELECT a -- don't\n, $__timeGroupAlias(\"ts\", '1m'), host FROM t",
+		},
+		{
+			"a block comment holding FROM does not close the projection",
+			`SELECT /* FROM t */ $__timeGroup("ts", '1m'), host FROM t`,
+			`SELECT /* FROM t */ $__timeGroupAlias("ts", '1m'), host FROM t`,
+		},
+		{
+			"a commented-out call stays commented out",
+			"SELECT /* $__timeGroup(\"ts\", '1m'), */ $__timeGroup(\"ts\", '5m'), host FROM t",
+			"SELECT /* $__timeGroup(\"ts\", '1m'), */ $__timeGroupAlias(\"ts\", '5m'), host FROM t",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

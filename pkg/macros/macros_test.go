@@ -93,9 +93,11 @@ func TestTimeGroup(t *testing.T) {
 	})
 
 	t.Run("unrecognized fill argument names the accepted values", func(t *testing.T) {
-		_, err := TimeGroup(testQuery(""), []string{`"ts"`, "1m", "linear"})
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "expected NULL, previous or a number")
+		for _, fill := range []string{"linear", "NaN", "Inf", "-Inf"} {
+			_, err := TimeGroup(testQuery(""), []string{`"ts"`, "1m", fill})
+			require.Error(t, err, fill)
+			assert.Contains(t, err.Error(), "expected NULL, previous or a number", fill)
+		}
 	})
 
 	t.Run("wrong arg count names the accepted fill values", func(t *testing.T) {
@@ -200,7 +202,7 @@ func TestIntervalS(t *testing.T) {
 	assert.Equal(t, "1", got)
 }
 
-func TestUnixEpochMacros(t *testing.T) {
+func TestTimeColumnAndEpochMacros(t *testing.T) {
 	cases := []struct {
 		name  string
 		macro sqlutil.MacroFunc

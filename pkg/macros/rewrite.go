@@ -23,7 +23,7 @@ func RewriteTrailingTimeGroup(sql string) string {
 	out.WriteString(sql[:start])
 	depth := 0
 	for i := start; i < end; {
-		if n := quotedLen(sql[i:]); n > 0 {
+		if n := skipLen(sql[i:]); n > 0 {
 			out.WriteString(sql[i : i+n])
 			i += n
 			continue
@@ -61,7 +61,7 @@ func projectionSpan(sql string) (int, int) {
 	start := -1
 	depth := 0
 	for i := 0; i < len(sql); {
-		if n := quotedLen(sql[i:]); n > 0 {
+		if n := skipLen(sql[i:]); n > 0 {
 			i += n
 			continue
 		}
@@ -89,6 +89,35 @@ func projectionSpan(sql string) (int, int) {
 	return start, len(sql)
 }
 
+// skipLen returns the byte length of the quoted literal or SQL comment starting
+// at s, or 0 when s starts neither. Both are opaque to the scan: a FROM, a
+// paren or an apostrophe inside one carries no syntax.
+func skipLen(s string) int {
+	if n := quotedLen(s); n > 0 {
+		return n
+	}
+	return commentLen(s)
+}
+
+// commentLen returns the byte length of the comment starting at s, or 0 when s
+// does not start one. A line comment runs through its newline, a block comment
+// through its terminator, and an unterminated one to the end of the statement.
+func commentLen(s string) int {
+	switch {
+	case strings.HasPrefix(s, "--"):
+		if n := strings.IndexByte(s, '\n'); n >= 0 {
+			return n + 1
+		}
+	case strings.HasPrefix(s, "/*"):
+		if n := strings.Index(s[2:], "*/"); n >= 0 {
+			return n + 4
+		}
+	default:
+		return 0
+	}
+	return len(s)
+}
+
 // quotedLen returns the byte length of the single- or double-quoted literal
 // starting at s, or 0 when s does not start one. A doubled quote escapes.
 func quotedLen(s string) int {
@@ -114,7 +143,7 @@ func quotedLen(s string) int {
 func callEnd(sql string, open int) int {
 	depth := 0
 	for i := open; i < len(sql); {
-		if n := quotedLen(sql[i:]); n > 0 {
+		if n := skipLen(sql[i:]); n > 0 {
 			i += n
 			continue
 		}

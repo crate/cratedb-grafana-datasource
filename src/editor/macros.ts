@@ -56,7 +56,7 @@ const DEFINITIONS = [
     args: ['column', "'1m'"],
     type: MacroType.Column,
     description:
-      'Bucket rows into time intervals server-side. Expands to DATE_BIN(\'60 seconds\'::INTERVAL, "ts", 0); pass $__interval to follow the panel resolution. A third argument of NULL, a number, or previous fills the buckets the query returned no rows for.',
+      'Bucket rows into time intervals server-side, e.g. DATE_BIN(\'60 seconds\'::INTERVAL, "ts", 0); pass $__interval as the width to follow the panel resolution, and an optional third argument of NULL, a number, or previous to fill the buckets the query returned no rows for.',
   },
   {
     name: "$__timeGroupAlias(timeColumn, '1m'[, fill])",
@@ -77,7 +77,8 @@ const DEFINITIONS = [
     text: '$__timeEpoch',
     args: ['column'],
     type: MacroType.Column,
-    description: 'Read a timestamp column as epoch seconds under the "time" alias: EXTRACT(EPOCH FROM "ts") AS "time".',
+    description:
+      'Read a timestamp column as epoch seconds under the "time" alias, EXTRACT(EPOCH FROM "ts") AS "time", which a time-series query plots as its time axis.',
   },
   {
     name: '$__unixEpochFilter(timeColumn)',
@@ -106,7 +107,7 @@ const DEFINITIONS = [
     args: ['column', "'1m'"],
     type: MacroType.Column,
     description:
-      'Bucketing for epoch-seconds columns: FLOOR(col/60)*60. Takes the same optional fill argument as $__timeGroup.',
+      'Bucketing for epoch-seconds columns, FLOOR(col/60)*60, with the same optional fill argument as $__timeGroup.',
   },
   {
     name: "$__unixEpochGroupAlias(timeColumn, '1m'[, fill])",
@@ -120,21 +121,22 @@ const DEFINITIONS = [
     text: '$__unixEpochNanoFilter',
     args: ['column'],
     type: MacroType.Filter,
-    description: 'Time range condition for BIGINT epoch-nanosecond columns.',
+    description:
+      'Time range condition for BIGINT epoch-nanosecond columns, e.g. col >= 1783072800000000000 AND col <= 1783094400000000000.',
   },
   {
     name: '$__unixEpochNanoFrom()',
     text: '$__unixEpochNanoFrom',
     args: [],
     type: MacroType.Value,
-    description: 'Replaced by the start of the panel time range in epoch nanoseconds.',
+    description: 'Replaced by the start of the panel time range in epoch nanoseconds, e.g. 1783072800000000000.',
   },
   {
     name: '$__unixEpochNanoTo()',
     text: '$__unixEpochNanoTo',
     args: [],
     type: MacroType.Value,
-    description: 'Replaced by the end of the panel time range in epoch nanoseconds.',
+    description: 'Replaced by the end of the panel time range in epoch nanoseconds, e.g. 1783094400000000000.',
   },
   {
     name: '$__interval',

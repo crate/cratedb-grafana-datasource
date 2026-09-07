@@ -24,6 +24,11 @@ func bucket(minutes int) time.Time { return rangeFrom.Add(time.Duration(minutes)
 // the plan comes from MutateQueryData and reaches MutateResponse in the context.
 func respond(t *testing.T, rawSQL string, format sqlutil.FormatQueryOption, frame *data.Frame) *data.Frame {
 	t.Helper()
+	return respondOver(t, rawSQL, format, frame, rangeFrom, rangeTo)
+}
+
+func respondOver(t *testing.T, rawSQL string, format sqlutil.FormatQueryOption, frame *data.Frame, from, to time.Time) *data.Frame {
+	t.Helper()
 	body, err := json.Marshal(struct {
 		RawSQL string                    `json:"rawSql"`
 		Format sqlutil.FormatQueryOption `json:"format"`
@@ -36,7 +41,7 @@ func respond(t *testing.T, rawSQL string, format sqlutil.FormatQueryOption, fram
 			RefID:     frame.Name,
 			JSON:      body,
 			Interval:  time.Minute,
-			TimeRange: backend.TimeRange{From: rangeFrom, To: rangeTo},
+			TimeRange: backend.TimeRange{From: from, To: to},
 		}},
 	})
 
@@ -83,6 +88,7 @@ func TestFillsBucketsTheQueryLeftEmpty(t *testing.T) {
 	cases := []struct {
 		name       string
 		sql        string
+		startOff   time.Duration
 		at         []time.Time
 		values     any
 		wantAt     []time.Time
@@ -153,6 +159,16 @@ func TestFillsBucketsTheQueryLeftEmpty(t *testing.T) {
 			wantType:   data.FieldTypeFloat64,
 		},
 		{
+			name:       "a range start inside a bucket still fills that bucket",
+			sql:        `SELECT $__timeGroupAlias("ts", '1m', 0), count(*) FROM t`,
+			startOff:   30 * time.Second,
+			at:         []time.Time{bucket(2)},
+			values:     []int64{7},
+			wantAt:     []time.Time{bucket(0), bucket(1), bucket(2), bucket(3), bucket(4)},
+			wantValues: []*float64{number(0), number(0), number(7), number(0), number(0)},
+			wantType:   data.FieldTypeInt64,
+		},
+		{
 			name:       "a two-argument group macro leaves the gaps alone",
 			sql:        `SELECT $__timeGroupAlias("ts", '1m'), avg(v) FROM t`,
 			at:         []time.Time{bucket(0), bucket(4)},
@@ -170,7 +186,7 @@ func TestFillsBucketsTheQueryLeftEmpty(t *testing.T) {
 				data.NewField("value", nil, tc.values),
 			)
 
-			got := respond(t, tc.sql, sqlutil.FormatOptionTimeSeries, frame)
+			got := respondOver(t, tc.sql, sqlutil.FormatOptionTimeSeries, frame, rangeFrom.Add(tc.startOff), rangeTo)
 
 			assert.Equal(t, tc.wantAt, stamps(t, got, 0))
 			assert.Equal(t, tc.wantValues, numbers(t, got, 1))
@@ -191,6 +207,32 @@ func TestFillLeavesFramesWithoutOneTimeAxisAlone(t *testing.T) {
 		got := respond(t, sql, sqlutil.FormatOptionTimeSeries, frame)
 
 		assert.Same(t, frame, got)
+	})
+
+	t.Run("two time fields leave no single axis to fill", func(t *testing.T) {
+		frame := data.NewFrame("A",
+			data.NewField("time", nil, []time.Time{bucket(0)}),
+			data.NewField("seen", nil, []time.Time{bucket(0)}),
+			data.NewField("value", nil, []int64{1}),
+		)
+
+		got := respond(t, sql, sqlutil.FormatOptionTimeSeries, frame)
+
+		assert.Same(t, frame, got)
+	})
+
+	t.Run("a bucket count over the ceiling is reported instead of filled", func(t *testing.T) {
+		frame := data.NewFrame("A",
+			data.NewField("time", nil, []time.Time{bucket(0)}),
+			data.NewField("value", nil, []int64{1}),
+		)
+
+		got := respond(t, `SELECT $__timeGroupAlias("ts", '1ms', 0), count(*) FROM t`, sqlutil.FormatOptionTimeSeries, frame)
+
+		assert.Same(t, frame, got)
+		require.NotNil(t, got.Meta)
+		require.Len(t, got.Meta.Notices, 1)
+		assert.Equal(t, data.NoticeSeverityWarning, got.Meta.Notices[0].Severity)
 	})
 
 	t.Run("long format holds several series per bucket", func(t *testing.T) {
@@ -221,6 +263,19 @@ func TestFillReachesEveryWideSeries(t *testing.T) {
 	assert.Equal(t, data.Labels{"host": "b"}, got.Fields[2].Labels)
 }
 
+func TestPreviousFillCarriesOnlyBucketedValues(t *testing.T) {
+	at := bucket(2)
+	frame := data.NewFrame("A",
+		data.NewField("time", nil, []*time.Time{nil, &at}),
+		data.NewField("value", nil, []int64{99, 7}),
+	)
+
+	got := respond(t, `SELECT $__timeGroupAlias("ts", '1m', previous), count(*) FROM t`, sqlutil.FormatOptionTimeSeries, frame)
+
+	assert.Equal(t, []*float64{number(99), nil, nil, number(7), number(7), number(7)}, numbers(t, got, 1))
+	assert.True(t, got.Fields[0].NilAt(0))
+}
+
 func TestNumericTimeColumnBecomesTheTimeAxis(t *testing.T) {
 	epoch := func(minutes int) int64 { return bucket(minutes).Unix() }
 
@@ -233,6 +288,28 @@ func TestNumericTimeColumnBecomesTheTimeAxis(t *testing.T) {
 		got := respond(t, `SELECT $__unixEpochGroupAlias("ts", '1m'), count(*) FROM t`, sqlutil.FormatOptionTimeSeries, frame)
 
 		assert.Equal(t, data.FieldTypeNullableTime, got.Fields[0].Type())
+		assert.Equal(t, []time.Time{bucket(0), bucket(1)}, stamps(t, got, 0))
+	})
+
+	t.Run("milliseconds are the default reading", func(t *testing.T) {
+		frame := data.NewFrame("A",
+			data.NewField("time", nil, []int64{bucket(0).UnixMilli(), bucket(1).UnixMilli()}),
+			data.NewField("value", nil, []int64{1, 2}),
+		)
+
+		got := respond(t, `SELECT "ts"::bigint AS "time", count(*) FROM t`, sqlutil.FormatOptionTimeSeries, frame)
+
+		assert.Equal(t, []time.Time{bucket(0), bucket(1)}, stamps(t, got, 0))
+	})
+
+	t.Run("nanoseconds are read at their own resolution", func(t *testing.T) {
+		frame := data.NewFrame("A",
+			data.NewField("time", nil, []int64{bucket(0).UnixNano(), bucket(1).UnixNano()}),
+			data.NewField("value", nil, []int64{1, 2}),
+		)
+
+		got := respond(t, `SELECT "nanos" AS "time", count(*) FROM t`, sqlutil.FormatOptionTimeSeries, frame)
+
 		assert.Equal(t, []time.Time{bucket(0), bucket(1)}, stamps(t, got, 0))
 	})
 
