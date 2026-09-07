@@ -58,9 +58,17 @@ test('getting started: all panels render without errors', { tag: '@critical' }, 
 test('getting started: the location variable offers the seeded values', async ({ gotoDashboardPage, page }) => {
   await gotoDashboardPage({ uid: 'cratedb-getting-started' });
 
-  await page.getByRole('combobox', { name: 'Location' }).click();
+  // 12.x renders the picker as a react-select input, 13.x as a labelled
+  // combobox; both expose a combobox inside the variable's own container.
+  const location = page
+    .getByTestId('data-testid template variable')
+    .filter({ has: page.getByTestId('data-testid Dashboard template variables submenu Label Location') });
+  await location.getByRole('combobox').first().click();
 
   for (const value of ['Berlin', 'Vienna', 'Zurich']) {
-    await expect(page.getByRole('option', { name: value })).toBeVisible({ timeout: 15_000 });
+    const option = page
+      .getByRole('option', { name: value })
+      .or(page.getByTestId('data-testid Select option').filter({ hasText: value }));
+    await expect(option.first()).toBeVisible({ timeout: 15_000 });
   }
 });

@@ -38,7 +38,14 @@
         "query": "SELECT DISTINCT location FROM doc.demo_metrics ORDER BY 1",
         "multi": true,
         "includeAll": true,
-        "current": {},
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
         "refresh": 1
       }
     ]
