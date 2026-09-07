@@ -122,8 +122,8 @@ describe('AdHocFilter', () => {
     expect(f.apply(sql, [filter({ key: 'nodes.name', value: 'n1' })])).toBe(sql);
   });
 
-  // ad-hoc filters must land in the query's own WHERE (before GROUP BY), not wrap
-  // the aggregated result, which would reference a column it no longer exposes
+  // the predicate has to constrain rows before aggregation: the aggregated
+  // projection no longer carries the filtered column
   it('ANDs into an existing WHERE, before GROUP BY', () => {
     const f = new AdHocFilter('doc');
     expect(f.apply('SELECT count(*) AS value FROM weather WHERE ts > 0 GROUP BY 1', [filter({})])).toBe(

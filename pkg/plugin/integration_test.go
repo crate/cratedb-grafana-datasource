@@ -187,7 +187,9 @@ func TestIntegrationAdHocKeys(t *testing.T) {
 		tags OBJECT AS (source TEXT),
 		position GEO_POINT,
 		area GEO_SHAPE,
-		samples ARRAY(DOUBLE PRECISION)
+		samples ARRAY(DOUBLE PRECISION),
+		embedding FLOAT_VECTOR(4),
+		flags BIT(4)
 	)`)
 	require.NoError(t, err)
 
@@ -199,11 +201,14 @@ func TestIntegrationAdHocKeys(t *testing.T) {
 	assert.Contains(t, keys, "adhoc_types.reading")
 	// OBJECT sub-columns carry their primitive data_type and stay filterable
 	assert.Contains(t, keys, "adhoc_types.tags['source']")
-	// containers can't back an equality/IN filter
+	// containers can't back an equality/IN filter, and neither vectors nor bit
+	// strings accept the text literal an ad-hoc value arrives as
 	assert.NotContains(t, keys, "adhoc_types.tags")
 	assert.NotContains(t, keys, "adhoc_types.position")
 	assert.NotContains(t, keys, "adhoc_types.area")
 	assert.NotContains(t, keys, "adhoc_types.samples")
+	assert.NotContains(t, keys, "adhoc_types.embedding")
+	assert.NotContains(t, keys, "adhoc_types.flags")
 
 	// empty schema falls back to the datasource default
 	fallback, err := driver.AdHocKeys(ctx, "")

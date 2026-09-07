@@ -133,7 +133,8 @@ export function CheatSheet({ onClickExample }: QueryEditorHelpProps<CrateDBQuery
         <li>
           A whole <code>OBJECT</code> or array column can be selected and renders as JSON. Neither type compares against
           a text literal, which is the only form an ad-hoc filter value takes, so such columns are not offered as ad-hoc
-          filter keys. A sub-column like <code>tags[&apos;host&apos;]</code> is.
+          filter keys; <code>FLOAT_VECTOR</code> and <code>BIT</code> are left out for the same reason. A sub-column like{' '}
+          <code>tags[&apos;host&apos;]</code> is.
         </li>
       </ul>
     </div>

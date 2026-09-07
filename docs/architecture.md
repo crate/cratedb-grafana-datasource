@@ -110,18 +110,17 @@ heuristic (`src/data/formatDetection.ts`, ported from QuestDB): time series when
 projection is aliased `time` (or uses `$__timeGroupAlias`/`$__unixEpochGroupAlias`, or is a bare
 `$__timeGroup(...)` that the backend shorthand aliases) and more columns follow, table otherwise;
 `EXPLAIN` always resolves to table. The backend and every query-time path (dashboards, alerting) see
-only the resolved value; queries saved before `selectedFormat` existed keep behaving per their
-explicit `format`.
+only the resolved value.
 
 Builder queries add two frontend-only fields (`src/types.ts`): `editorType` marks which surface
-edits the query, where unset means SQL so pre-builder queries keep working, and `builderOptions`
-holds the visual state from which `src/data/sqlGenerator.ts` regenerates `rawSql` on every edit. The
-backend contract stays `{rawSql, format}`; the builder's flavor (table / time series / logs) is
-written straight into `format`. Switching to SQL stashes `builderOptions` in `meta`; switching back
-restores the stash when the SQL is untouched, otherwise `src/data/sqlParser.ts` (pgsql-ast-parser)
-re-derives builder state from the SQL, accepting a conversion only when regenerating SQL from it
-parses back to the same normalized AST. SQL that neither path can account for prompts before being
-replaced.
+edits the query, where an unset value reads as SQL, the shape a hand-written or provisioned
+`{rawSql}` target carries, and `builderOptions` holds the visual state from which
+`src/data/sqlGenerator.ts` regenerates `rawSql` on every edit. The backend contract stays `{rawSql,
+format}`; the builder's flavor (table / time series / logs) is written straight into `format`.
+Switching to SQL stashes `builderOptions` in `meta`; switching back restores the stash when the SQL
+is untouched, otherwise `src/data/sqlParser.ts` (pgsql-ast-parser) re-derives builder state from
+the SQL, accepting a conversion only when regenerating SQL from it parses back to the same
+normalized AST. SQL that neither path can account for prompts before being replaced.
 
 **Autocomplete lifecycle.** Monaco completion provider → `postResource('tables', {schema})` →
 sqlds' auto-registered resource route → `Completable.Tables()` → `information_schema` query →
@@ -356,7 +355,7 @@ Four automated tiers, all wired into CI (see `Makefile` / `.github/workflows/ci.
 | Tier | Command | Covers |
 |---|---|---|
 | Unit | `make test` | Macro emissions (golden strings plus a full `sqlutil.Interpolate` round trip), converters, settings/DSN parsing, error classification, schema cache, ad-hoc filter SQL generation, `$__conditionalAll`. No containers. |
-| Integration | `make test-integration` | The driver in-process against a real CrateDB (testcontainers): connect and execute the interpolated default template, no Grafana or `dist/` needed. Runs across a CrateDB version matrix in CI (6.3, latest, nightly). |
+| Integration | `make test-integration` | The driver in-process against a real CrateDB (testcontainers): connect and execute the interpolated default template, the SQL each macro emits, bucket fill and the numeric-time axis, frame types across CrateDB's own types, and the `information_schema` introspection behind ad-hoc keys and column metadata. No Grafana or `dist/` needed. Runs across a CrateDB version matrix in CI (6.3, latest, nightly). |
 | Go e2e | `make e2e` | The **deployed** plugin through Grafana's API: health checks, `/api/ds/query` with macros (including the backend-side `$__interval` alerting path and a provisioned alert rule), autocomplete resource routes (asserting empty results serialize as `[]`, not `null`), frame field types (incl. OBJECT as structured JSON), time-series frame shape. Hermetic (testcontainers boots CrateDB + Grafana with `dist/` mounted) or attached to a `make up` stack via `GRAFANA_URL`. |
 | Browser smoke | `make e2e-browser` | Playwright and `@grafana/plugin-e2e` against the compose stack (boots and seeds it), in CI across a Grafana version matrix (the `12.3` floor and current stable): config editor renders and "Save & test" succeeds (and fails actionably for an unreachable host), query editor loads Monaco with the default template, a seeded query returns data, bundled dashboards provision and render. |
 
@@ -373,7 +372,6 @@ Design decisions the tiers encode:
   authenticate as `admin:admin`.
 - The browser-smoke matrix confirms rendering on both 12.3 (React 18) and current (React 19), which
   is what the `react/jsx-runtime` external in [§6](#6-distribution-and-cicd) buys.
-- mTLS (HBA `method: cert`) is supported in configuration but not covered by a test tier.
 
 ## 8. Open questions
 

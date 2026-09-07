@@ -51,8 +51,9 @@ Ad-hoc filters work without setup. Keys are `table.column` pairs read from
 that table.
 
 A column whose type cannot back an equality predicate (`OBJECT`, `GEO_POINT`, `GEO_SHAPE`,
-arrays) is left out of the key list, so the picker only offers filters that produce valid
-CrateDB SQL. `OBJECT` sub-columns are kept, since those are individually comparable.
+`FLOAT_VECTOR`, `BIT`, arrays) is left out of the key list, so the picker only offers filters
+that produce valid CrateDB SQL. `OBJECT` sub-columns are kept, since those are individually
+comparable.
 
 On a large schema, add a dashboard **constant** or **textbox** variable named
 `cratedb_adhoc_tables` holding a comma-separated list of table names to narrow which tables
@@ -70,6 +71,5 @@ queries with single-table ones will show some panels responding to the filter an
 ### Adding the control
 
 On **Grafana 12 and later** the control is called **Filter** and sits outside the variable-type
-list: use **Edit → + Add → Filter and Group by**, then pick the CrateDB data source. On older
-versions it is the *Ad hoc filters* variable type. A dashboard-JSON variable
-of `"type": "adhoc"` works on every version.
+list: use **Edit → + Add → Filter and Group by**, then pick the CrateDB data source. A
+dashboard-JSON variable of `"type": "adhoc"` works on every version.

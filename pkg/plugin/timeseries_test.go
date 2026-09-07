@@ -360,4 +360,21 @@ func TestNumericTimeColumnBecomesTheTimeAxis(t *testing.T) {
 		assert.Equal(t, []time.Time{bucket(0), bucket(1), bucket(2), bucket(3), bucket(4)}, stamps(t, got, 0))
 		assert.Equal(t, []*float64{number(1), number(0), number(3), number(0), number(0)}, numbers(t, got, 1))
 	})
+
+	t.Run("a label column splits into one series per label, each filled", func(t *testing.T) {
+		frame := data.NewFrame("A",
+			data.NewField("time", nil, []int64{epoch(0), epoch(0), epoch(2), epoch(2)}),
+			data.NewField("host", nil, []string{"a", "b", "a", "b"}),
+			data.NewField("value", nil, []int64{1, 2, 3, 4}),
+		)
+
+		got := respond(t, `SELECT $__unixEpochGroupAlias("ts", '1m', 0), host, count(*) FROM t GROUP BY 1, 2`, sqlutil.FormatOptionTimeSeries, frame)
+
+		require.Len(t, got.Fields, 3)
+		assert.Equal(t, []time.Time{bucket(0), bucket(1), bucket(2), bucket(3), bucket(4)}, stamps(t, got, 0))
+		assert.Equal(t, data.Labels{"host": "a"}, got.Fields[1].Labels)
+		assert.Equal(t, data.Labels{"host": "b"}, got.Fields[2].Labels)
+		assert.Equal(t, []*float64{number(1), number(0), number(3), number(0), number(0)}, numbers(t, got, 1))
+		assert.Equal(t, []*float64{number(2), number(0), number(4), number(0), number(0)}, numbers(t, got, 2))
+	})
 }

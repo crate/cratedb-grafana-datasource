@@ -18,7 +18,6 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/useragent"
 	"github.com/grafana/grafana-plugin-sdk-go/build/buildinfo"
-	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/grafana/grafana-plugin-sdk-go/data/sqlutil"
 	"github.com/grafana/sqlds/v5"
 	"github.com/jackc/pgx/v5"
@@ -219,9 +218,6 @@ func configureTLS(cc *pgx.ConnConfig, settings Settings) error {
 		}
 		clientCert = &pair
 	}
-	if cc.TLSConfig == nil {
-		cc.TLSConfig = &tls.Config{} //nolint:gosec // verification level is governed by sslmode
-	}
 	// pgx derives one tls.Config per host of a comma-separated server list, the
 	// first on the config and the rest on its fallbacks.
 	tlsConfigs := []*tls.Config{cc.TLSConfig}
@@ -278,7 +274,7 @@ func (d *CrateDB) Settings(ctx context.Context, config backend.DataSourceInstanc
 	}
 	return sqlds.DriverSettings{
 		Timeout:  timeout,
-		FillMode: &data.FillMissing{Mode: data.FillModeNull},
+		FillMode: longToWideFill,
 		// RowLimit 0 falls through to GF_DATAPROXY_ROW_LIMIT / the Grafana
 		// instance's dataproxy.row_limit (see sqlds newRowLimit).
 		RowLimit: rowLimit,

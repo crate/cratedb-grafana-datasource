@@ -184,3 +184,47 @@ func TestIntegrationEpochMacrosYieldATimeAxis(t *testing.T) {
 		})
 	}
 }
+
+func TestIntegrationEpochTimeSplitsSeriesByLabel(t *testing.T) {
+	_, jsonData := startCrateDB(t)
+	ctx := context.Background()
+
+	driver := &CrateDB{}
+	db, err := driver.Connect(ctx, backend.DataSourceInstanceSettings{JSONData: []byte(jsonData)}, nil)
+	require.NoError(t, err)
+	defer func() { _ = db.Close() }()
+
+	_, err = db.ExecContext(ctx, `CREATE TABLE doc.labelled (ts TIMESTAMPTZ, host TEXT)`)
+	require.NoError(t, err)
+
+	stamp := time.Now().UTC().Truncate(time.Minute).Add(-time.Minute)
+	for _, host := range []string{"a", "b", "b"} {
+		_, err = db.ExecContext(ctx, `INSERT INTO doc.labelled (ts, host) VALUES (?, ?)`, stamp, host)
+		require.NoError(t, err)
+	}
+	_, err = db.ExecContext(ctx, `REFRESH TABLE doc.labelled`)
+	require.NoError(t, err)
+
+	frame := queryFrame(ctx, t, db, `SELECT $__timeEpoch("ts"), "host", count(*) AS "value" FROM doc.labelled
+		WHERE $__timeFilter("ts") GROUP BY 1, 2 ORDER BY 1`,
+		backend.TimeRange{From: stamp.Add(-time.Hour), To: stamp.Add(time.Hour)})
+
+	require.Len(t, frame.Fields, 3)
+	assert.True(t, frame.Fields[0].Type().Time(), "field type %s", frame.Fields[0].Type())
+	assert.Equal(t, data.Labels{"host": "a"}, frame.Fields[1].Labels)
+	assert.Equal(t, data.Labels{"host": "b"}, frame.Fields[2].Labels)
+
+	rows, err := frame.RowLen()
+	require.NoError(t, err)
+	require.Equal(t, 1, rows)
+
+	at, ok := frame.ConcreteAt(0, 0)
+	require.True(t, ok)
+	assert.Equal(t, stamp, at.(time.Time).UTC())
+
+	for field, want := range map[int]float64{1: 1, 2: 2} {
+		count, err := frame.Fields[field].FloatAt(0)
+		require.NoError(t, err)
+		assert.Equal(t, want, count, "field %d", field)
+	}
+}

@@ -55,9 +55,10 @@ query returned no row for gets one row, carrying the fill value in every column 
 timestamp; the rows the query did return keep their values. `NULL` leaves a hole the panel
 draws as a break, a number inserts that value, and `previous` repeats the last value before
 the gap. Boundaries are aligned the way `DATE_BIN` aligns them, so a range starting mid-bucket
-still gets that bucket. Filling is skipped, with a warning on the panel, when the bucket width
-and the range would add more than 100000 rows, and it is skipped for the `multi` format and for
-a frame that holds several series per bucket in long form.
+still gets that bucket. Filling is skipped, with a warning on the panel, when the panel range
+holds 100000 bucket boundaries or more, and it is skipped for the `multi` format and for a frame
+that holds several series per bucket in long form. A query that returned no rows at all yields no
+frame to fill.
 
 **A numeric `time` column becomes the time axis.** In a time-series query, a column named
 `time` holding integers or floats is read as an epoch timestamp, and its magnitude picks the

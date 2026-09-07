@@ -48,7 +48,7 @@ function escapeSubscripts(input: string): string | null {
       if (key.includes("'")) {
         return null;
       }
-      out += `['${escapeLiteral(key)}']`;
+      out += `['${key}']`;
     } else {
       return null;
     }

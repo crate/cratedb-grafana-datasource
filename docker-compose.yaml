@@ -28,8 +28,8 @@ services:
       cratedb:
         condition: service_healthy
 
-  # Pinned so a fresh `up` is reproducible; override with GRAFANA_VERSION
-  # (12.3.0 is the supported floor, `latest` the other end of the CI matrix).
+  # Pinned to a current release so a fresh `up` is reproducible; override with
+  # GRAFANA_VERSION.
   grafana:
     image: grafana/grafana:${GRAFANA_VERSION:-13.2.1}
     ports:

@@ -6,12 +6,13 @@ import (
 	"net/http"
 )
 
-// Container-ish types are excluded: OBJECT/GEO have no equality literal and arrays
-// don't compare with =/IN. OBJECT sub-columns (tags['source']) carry their primitive
-// data_type and stay included.
+// Excluded are the types that cannot be compared with the text literal an ad-hoc
+// value arrives as: OBJECT/GEO have no equality literal, arrays don't compare with
+// =/IN, and float_vector and bit reject the cast. OBJECT sub-columns (tags['source'])
+// carry their primitive data_type and stay included.
 const adhocKeysQuery = `SELECT table_name || '.' || column_name FROM information_schema.columns
 	WHERE table_schema = $1
-	  AND data_type NOT IN ('object', 'geo_point', 'geo_shape')
+	  AND data_type NOT IN ('object', 'geo_point', 'geo_shape', 'float_vector', 'bit')
 	  AND data_type NOT LIKE '%_array'
 	ORDER BY table_name, ordinal_position`
 

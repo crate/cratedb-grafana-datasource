@@ -21,6 +21,10 @@ import (
 // materialise a frame the size of the range divided by the width.
 const maxFilledBuckets = 100_000
 
+// longToWideFill is what Settings hands sqlds as DriverSettings.FillMode, so a
+// frame widened here splits into the same series a TIMESTAMPTZ one would.
+var longToWideFill = &data.FillMissing{Mode: data.FillModeNull}
+
 // timeSeriesPlan carries what the response step needs and the frame does not
 // hold: the requested format, the panel range, and the bucket width and fill
 // mode of the query's group macro.
@@ -58,9 +62,9 @@ func (d *CrateDB) MutateQueryData(ctx context.Context, req *backend.QueryDataReq
 	return context.WithValue(ctx, timeSeriesPlansKey{}, plans), req
 }
 
-// MutateResponse promotes a numeric "time" column to the frame's time axis and
-// fills the buckets a $__timeGroup fill argument asked for. It runs after
-// LongToWide, so a fill reaches every per-series column.
+// MutateResponse promotes a numeric "time" column to the frame's time axis,
+// widens the frame the promotion turned into a time series, and fills the
+// buckets a $__timeGroup fill argument asked for.
 func (d *CrateDB) MutateResponse(ctx context.Context, frames data.Frames) (data.Frames, error) {
 	plans, ok := ctx.Value(timeSeriesPlansKey{}).(map[string]timeSeriesPlan)
 	if !ok {
@@ -74,8 +78,16 @@ func (d *CrateDB) MutateResponse(ctx context.Context, frames data.Frames) (data.
 		if !ok {
 			continue
 		}
-		if plan.format == sqlutil.FormatOptionTimeSeries {
-			promoteNumericTimeField(frame)
+		if plan.format == sqlutil.FormatOptionTimeSeries && promoteNumericTimeField(frame) {
+			// sqlds widens a long frame before this point, but a numeric time
+			// column read as a value column left nothing for it to widen
+			if frame.TimeSeriesSchema().Type == data.TimeSeriesTypeLong {
+				wide, err := data.LongToWide(frame, longToWideFill)
+				if err != nil {
+					return nil, err
+				}
+				frame, frames[i] = wide, wide
+			}
 		}
 		// a long frame holds several rows per bucket, so a gap in it is not a
 		// gap in one series
@@ -87,12 +99,14 @@ func (d *CrateDB) MutateResponse(ctx context.Context, frames data.Frames) (data.
 }
 
 // promoteNumericTimeField turns a numeric column named "time" into the frame's
-// time axis. NULLs stay NULL.
-func promoteNumericTimeField(frame *data.Frame) {
+// time axis and reports whether it found one. NULLs stay NULL.
+func promoteNumericTimeField(frame *data.Frame) bool {
+	promoted := false
 	for i, field := range frame.Fields {
 		if !strings.EqualFold(field.Name, "time") || !field.Type().Numeric() {
 			continue
 		}
+		promoted = true
 		times := data.NewFieldFromFieldType(data.FieldTypeNullableTime, field.Len())
 		times.Name, times.Labels, times.Config = field.Name, field.Labels, field.Config
 		for row := 0; row < field.Len(); row++ {
@@ -107,6 +121,7 @@ func promoteNumericTimeField(frame *data.Frame) {
 		}
 		frame.Fields[i] = times
 	}
+	return promoted
 }
 
 // epochPrecisionToMS reads a numeric epoch at the resolution its magnitude

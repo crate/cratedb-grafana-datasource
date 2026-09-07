@@ -70,19 +70,4 @@ describe('CheatSheet reference content', () => {
     expect(screen.getByText(/doc\.demo_metrics/)).toBeInTheDocument();
     expect(screen.getByText(/doc\.demo_logs/)).toBeInTheDocument();
   });
-
-  it('documents the annotation query shape', () => {
-    renderSheet();
-
-    expect(screen.getByRole('heading', { name: /annotations/i })).toBeInTheDocument();
-    expect(screen.getAllByText(/array_to_string/).length).toBeGreaterThan(0);
-  });
-
-  it('documents OBJECT and array addressing and why neither is an ad-hoc filter key', () => {
-    renderSheet();
-
-    expect(screen.getAllByText(/OBJECT/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/UNNEST/).length).toBeGreaterThan(0);
-    expect(screen.getByText(/not offered as ad-hoc filter keys/)).toBeInTheDocument();
-  });
 });

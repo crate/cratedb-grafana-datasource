@@ -21,9 +21,9 @@ sheet, and bundled example dashboards come with it.
 JSON, and arrays get defined handling — types the PostgreSQL data source has no converter for.
 
 **4. Ad-hoc filters that only offer usable keys.** Filter keys come from `information_schema`
-and skip columns that cannot form a CrateDB equality predicate (`OBJECT`, `GEO`, arrays) while
-keeping `OBJECT` sub-columns. The generic adapter would surface keys that produce invalid
-filters.
+and skip columns that cannot form a CrateDB equality predicate (`OBJECT`, `GEO`, `FLOAT_VECTOR`,
+`BIT`, arrays) while keeping `OBJECT` sub-columns. The generic adapter would surface keys that
+produce invalid filters.
 
 **5. CrateDB-specific connection diagnostics.** Authentication, TLS, network and timeout
 failures each come back with a concrete fix in place of the raw driver error, and the config page
