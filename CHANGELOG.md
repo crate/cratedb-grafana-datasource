@@ -45,8 +45,8 @@ Initial release.
   that read one plain table. Filter keys skip
   column types that can't back an equality filter (OBJECT, GEO, arrays), and a
   `cratedb_adhoc_tables` dashboard variable narrows the key picker on large schemas.
-- **Type mapping**: CrateDB `OBJECT` columns surface as structured JSON fields (expandable
-  in table panels); arrays keep their PostgreSQL text form.
+- **Type mapping**: CrateDB `OBJECT` columns surface as structured JSON fields, which a table
+  panel's cell inspector opens in full; arrays keep their PostgreSQL text form.
 - **Logs**: a *Logs* query format renders rows as log lines (e.g. in Explore); alias columns
   as `time`, `body`, and optionally `level` (see the cheat sheet's logs template). Explore's
   logs-volume histogram runs as a full-range aggregation (severity-bucketed when a level

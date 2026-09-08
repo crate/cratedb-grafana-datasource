@@ -32,7 +32,8 @@ Pick a table and the visual query builder completes the time-series query CrateD
   same way panels do.
 - **Cluster monitoring with no exporter.** The bundled *CrateDB Cluster Health* dashboard reads
   `sys.nodes`, `sys.shards` and `sys.jobs_log` directly.
-- **CrateDB types, modeled.** `OBJECT` columns surface as structured, expandable JSON; arrays,
+- **CrateDB types, modeled.** `OBJECT` columns surface as structured JSON a table panel can
+  inspect cell by cell; arrays,
   `GEO` and `FLOAT_VECTOR` come through in their CrateDB text form rather than as errors.
 - **Template variables and ad-hoc filters.** Variable queries get the full SQL editor;
   dashboard-wide filters offer only columns that can back a valid CrateDB predicate.

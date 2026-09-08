@@ -183,7 +183,7 @@ pg-wire type names as reported by pgx (`DatabaseTypeName`) → frame field types
 divergences from stock PostgreSQL:
 
 - **`OBJECT` columns arrive as `JSON`** and are surfaced as structured JSON fields
-  (`FieldTypeJSON`), so table panels render them expandable instead of as flat text.
+  (`FieldTypeJSON`), which a table panel's cell inspector and JSON cell type both read.
 - **Arrays** (including `FLOAT_VECTOR`, which arrives as `_FLOAT4`) are read as their PostgreSQL
   text representation, a pg array literal like `{"1","2","3"}` rather than JSON.
 - **Timestamps** are millisecond-precision; converters normalize to UTC.

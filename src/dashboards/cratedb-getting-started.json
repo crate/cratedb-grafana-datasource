@@ -63,7 +63,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "## CrateDB Getting Started\n\nWhat you're looking at: temperature, humidity, and ingest logs for three demo locations, plus event markers \u2014 a worked example of the query pattern this plugin encourages. Each chart aggregates server-side (`$__timeGroupAlias` + `$__timeFilter`) so the result set scales with panel width, not table size; *Latest raw readings* shows the underlying rows, including an expandable OBJECT `tags` column.\n\nThese panels run on the seeded `doc.demo_*` tables (`make seed` in the dev stack). **Point the queries at your own data to make it yours** \u2014 the editor's cheat sheet (book icon) documents every macro."
+        "content": "## CrateDB Getting Started\n\nWhat you're looking at: temperature, humidity, and ingest logs for three demo locations, plus event markers \u2014 a worked example of the query pattern this plugin encourages. Each chart aggregates server-side (`$__timeGroupAlias` + `$__timeFilter`) so the result set scales with panel width, not table size; *Latest raw readings* shows the underlying rows, including an OBJECT `tags` column the table can inspect cell by cell.\n\nThese panels run on the seeded `doc.demo_*` tables (`make seed` in the dev stack). **Point the queries at your own data to make it yours** \u2014 the editor's cheat sheet (book icon) documents every macro."
       }
     },
     {

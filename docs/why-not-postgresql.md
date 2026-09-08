@@ -17,8 +17,9 @@ expressions CrateDB has to emulate. Macros resolve on the backend, so they hold 
 alerting. A visual query builder that starts from this pattern, an in-editor macro cheat
 sheet, and bundled example dashboards come with it.
 
-**3. CrateDB container types, modeled.** `OBJECT` columns render as structured, expandable
-JSON, and arrays get defined handling — types the PostgreSQL data source has no converter for.
+**3. CrateDB container types, modeled.** `OBJECT` columns render as structured JSON a table
+panel can inspect cell by cell, and arrays get defined handling — types the PostgreSQL data
+source has no converter for.
 
 **4. Ad-hoc filters that only offer usable keys.** Filter keys come from `information_schema`
 and skip columns that cannot form a CrateDB equality predicate (`OBJECT`, `GEO`, `FLOAT_VECTOR`,
