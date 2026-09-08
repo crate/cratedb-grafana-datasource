@@ -12,6 +12,8 @@ const IGNORED_FAILURES = [
   /\/api\/live\//,
   /\/public\/build\/img\//,
   /\/api\/gnet\//,
+  // 12.x asks whether a dashboard is public even when the feature is off.
+  /\/public-dashboards$/,
 ];
 
 type QAFixtures = {

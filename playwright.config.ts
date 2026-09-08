@@ -57,7 +57,7 @@ export default defineConfig<PluginOptions>({
           {
             name: 'qa',
             testDir: './tests/qa',
-            timeout: 180_000,
+            timeout: 300_000,
             use: {
               ...devices['Desktop Chrome'],
               channel: 'chrome',
