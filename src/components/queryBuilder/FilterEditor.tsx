@@ -71,7 +71,6 @@ function valueless(operator: FilterOperator): boolean {
   return NULL_OPERATORS.includes(operator) || operator === FilterOperator.WithinTimeRange;
 }
 
-
 function ValueEditor({
   filter,
   kind,
