@@ -35,6 +35,10 @@ export const test = base.extend<QAFixtures>({
     });
     page.on('pageerror', (e: Error) => problems.push(`pageerror: ${e.message}`));
     page.on('requestfailed', (r: Request) => {
+      // A dashboard cancels in-flight panel queries when its time range moves.
+      if (r.failure()?.errorText === 'net::ERR_ABORTED') {
+        return;
+      }
       if (!IGNORED_FAILURES.some((re) => re.test(r.url()))) {
         problems.push(`request failed: ${r.url()}`);
       }
