@@ -10,14 +10,15 @@ test('an alert rule on a CrateDB query previews and evaluates', async ({ page, s
   await page.goto('/alerting/new/alerting');
   await page.getByRole('textbox').first().fill('QA CrateDB job rate');
 
-  // The form picks a data source of its own accord; name the provisioned one.
-  const picker = page.getByRole('combobox', { name: 'Select a data source' });
-  await picker.click();
-  await picker.fill('CrateDB');
-  await page.getByRole('option', { name: 'CrateDB', exact: true }).first().click();
+  // The form opens on the org default data source, which is the provisioned
+  // CrateDB one; the preview below proves it.
 
   // The rule form hosts the same editor as a panel; new queries open in the builder.
-  await page.getByRole('radio', { name: 'SQL' }).last().click({ force: true });
+  // The rule form re-renders on a timer, so a normal click waits forever for
+  // the switch to hold still; drive the radio directly.
+  const sql = page.getByRole('radio', { name: 'SQL' }).last();
+  await sql.check({ force: true });
+  await expect(sql).toBeChecked({ timeout: 30_000 });
   await setEditorSql(page, RULE_SQL);
   await shot('rule-query');
 
