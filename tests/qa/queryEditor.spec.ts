@@ -40,8 +40,10 @@ test('a new query opens in the builder and produces runnable SQL', async ({ pane
 
 test('the format selector reports what Auto resolved to', async ({ panelEditPage, page, shot }) => {
   await openSqlPanel(panelEditPage, page);
-  // 12.x leaves the radio input unclickable behind its label, so set it.
-  await page.getByRole('radio', { name: 'Auto' }).last().check({ force: true });
+  // The label is the control; the radio input behind it takes no click on 12.x.
+  const formats = page.getByRole('radiogroup').filter({ hasText: 'Time series' }).last();
+  await page.waitForTimeout(300);
+  await formats.getByText('Auto', { exact: true }).click({ force: true });
   const resolved = page.getByTestId('resolved-format').last();
 
   await setEditorSql(
