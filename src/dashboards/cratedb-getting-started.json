@@ -142,7 +142,28 @@
           "format": 1,
           "rawSql": "SELECT ts, location, temperature, humidity, tags\nFROM doc.demo_metrics\nWHERE $__timeFilter(\"ts\")\n  AND $__conditionalAll(location IN ($location), $location)\nORDER BY ts DESC\nLIMIT 25"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "tags"
+            },
+            "properties": [
+              {
+                "id": "custom.inspect",
+                "value": true
+              },
+              {
+                "id": "custom.width",
+                "value": 260
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "id": 3,
