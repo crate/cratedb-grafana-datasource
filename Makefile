@@ -139,6 +139,7 @@ e2e: ensure-dist ## Deployed-plugin tests vs CrateDB + Grafana (set GRAFANA_URL 
 e2e-browser: ensure-dist ## Browser smoke tests vs the compose stack (Playwright)
 	@chmod +x dist/gpx_cratedb_* 2>/dev/null || true
 	CRATEDB_VERSION=$(CRATEDB_VERSION) docker compose up -d --build --wait
+	./scripts/seed.sh
 	$(YARN) playwright install chromium
 	$(YARN) e2e:browser
 

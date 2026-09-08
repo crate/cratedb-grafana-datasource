@@ -1,5 +1,7 @@
-import { test, expect } from './qa';
 import type { Page } from '@playwright/test';
+
+import { pickComboboxOption } from '../smoke/helpers';
+import { test, expect } from './qa';
 
 const NEW_DATASOURCE = '/connections/datasources/new';
 
@@ -36,23 +38,15 @@ test('the config page walks its fields, sections and warnings', async ({ page, s
     // TLS details appear only once a mode needs them.
     await expect(page.getByText('TLS/SSL Auth Details')).toBeHidden();
     const tlsMode = page.getByRole('combobox', { name: 'TLS/SSL Mode' });
-    await tlsMode.click();
-    await page.getByRole('option', { name: 'verify-full' }).click();
+    await pickComboboxOption(page, tlsMode, 'verify-full');
     await expect(page.getByText('TLS/SSL Auth Details')).toBeVisible();
     await shot('tls-verify-full');
 
-    const method = page.getByRole('combobox', { name: 'TLS/SSL Method' });
-    await method.click();
-    await page.getByRole('option', { name: 'File system path' }).click();
-    await expect(page.getByPlaceholder('TLS/SSL root cert file')).toBeVisible();
-    await shot('tls-file-paths');
-
-    await method.click();
-    await page.getByRole('option', { name: 'Certificate content' }).click();
+    // Certificate content is the default method; the file-path variant and the
+    // toggle between them are the smoke suite's business.
     await expect(page.getByPlaceholder('-----BEGIN CERTIFICATE-----').first()).toBeVisible();
 
-    await tlsMode.click();
-    await page.getByRole('option', { name: 'disable' }).click();
+    await pickComboboxOption(page, tlsMode, 'disable');
     await expect(page.getByText('TLS/SSL Auth Details')).toBeHidden();
 
     for (const section of ['User Permissions', 'Additional settings']) {

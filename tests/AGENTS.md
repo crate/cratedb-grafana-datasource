@@ -19,6 +19,10 @@ leaves a screenshot per step under `qa-artifacts/` for a person to look through 
 `QA=1` is what admits the project into the Playwright run, so CI — which runs `playwright test`
 unqualified — never schedules it.
 
+The walk targets the Grafana it runs against, normally the current release. Older versions
+render several controls differently enough that driving them is its own project; the smoke tier
+is what runs across the version matrix.
+
 Two things bite in that suite. Grafana renders a panel only once it scrolls into view, so a
 screenshot or an error check taken without scrolling reports blank space for everything below the
 fold; `renderWholePage` in `tests/qa/qa.ts` handles it. And the bundled dashboards bind their

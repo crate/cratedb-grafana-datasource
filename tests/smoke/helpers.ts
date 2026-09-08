@@ -80,18 +80,29 @@ export async function openSuggestions(page: Page): Promise<string[]> {
   return widget.locator('.monaco-list-row').allInnerTexts();
 }
 
-// Assert every panel on the current dashboard rendered without an error icon.
-// The title list is the caller's; the length guard keeps an empty list from passing vacuously.
-// Grafana's combobox filters its list as you type and re-renders it, so a
-// click on an option can wait for a stable element that never arrives. The
-// keyboard path commits the highlighted option in every version.
+// Grafana's combobox re-renders its list as it filters, so an option can move
+// out from under a pointer between the actionability check and the click. The
+// keyboard path commits the highlighted option without touching the list, but
+// the highlighted index lags one render behind the filtered-in option: acting
+// the instant it appears re-selects whatever was highlighted before filtering,
+// or catches the list mid-render and hangs the tab. The pause lets that index
+// catch up before ArrowDown moves it.
 export async function pickComboboxOption(page: Page, combobox: Locator, option: string) {
-  await combobox.click();
-  await combobox.fill(option);
-  await expect(page.getByRole('option', { name: option })).toBeVisible({ timeout: 15_000 });
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('Enter');
-  await expect(combobox).toHaveValue(option, { timeout: 5_000 });
+  const entry = page.getByRole('option', { name: option }).first();
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await combobox.click();
+    await combobox.press('ControlOrMeta+A');
+    await combobox.pressSequentially(option);
+    await expect(entry).toBeVisible({ timeout: 15_000 });
+    await page.waitForTimeout(300);
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    if (await combobox.inputValue().then((value) => value === option)) {
+      return;
+    }
+    await page.keyboard.press('Escape');
+  }
+  await expect(combobox).toHaveValue(option);
 }
 
 // Grafana renders a panel when it scrolls into view; a locator for one that
@@ -103,6 +114,8 @@ export async function scrollDashboardToBottom(page: Page) {
   }
 }
 
+// Assert every panel on the current dashboard rendered without an error icon.
+// The title list is the caller's; the length guard keeps an empty list from passing vacuously.
 export async function expectAllPanelsHealthy(page: Page, titles: string[]) {
   expect(titles.length).toBeGreaterThan(0);
   for (const title of titles) {
