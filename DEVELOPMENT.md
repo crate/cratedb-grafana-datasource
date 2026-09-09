@@ -35,7 +35,7 @@ make seed      # re-seed the demo tables (metrics, logs, events) in a running st
 Grafana loads the plugin from the bind-mounted `dist/`, so `make build` output takes precedence
 and the container build is skipped once one exists — delete `dist/` (or `make clean`) to force it.
 
-`make help` lists all targets (watch mode, signing, …). Three verification tiers beyond `check`
+`make help` lists all targets (watch mode, signing, …). Four verification tiers beyond `check`
 (ARM hosts get the `nightly` CrateDB image automatically, since release images are amd64-only):
 
 ```bash
@@ -47,6 +47,9 @@ make e2e               # deployed-plugin tests: boots CrateDB + Grafana with dis
 make e2e-browser       # Playwright smoke tests (config editor, query editor, bundled
                        # dashboards): boots + seeds the compose stack, downloads Chromium
                        # on first run
+make qa                # pre-release walk over every surface in a real Chrome: asserts what
+                       # it can and leaves a screenshot per step in qa-artifacts/ to read
+                       # through. Slower than the smoke tier and local-only
 ```
 
 The Makefile handles the toolchain quirks: Yarn 4 is required by `@grafana/plugin-ui` and
@@ -64,5 +67,6 @@ One gap the tiers do not close: client-certificate authentication is configurabl
 file paths, in the UI and via provisioning) but no tier exercises a CrateDB HBA `method: cert`
 setup.
 
-Note: `src/img/logo.svg` is a placeholder; replace it with the official CrateDB brand asset
-before any release.
+`src/img/logo.svg` is a placeholder awaiting the official CrateDB brand asset; replacing it is a
+checklist item in
+[RELEASE.md](https://github.com/crate/cratedb-grafana-datasource/blob/main/RELEASE.md#before-the-first-tag).

@@ -183,11 +183,12 @@ describe('generateSql', () => {
   });
 
   it('aliases logs columns to the names the logs panel expects', () => {
+    // "level" already carries the expected name, so it takes no alias
     expect(generateSql(logsOptions())).toBe(
       'SELECT\n' +
         '  "ts" AS "time",\n' +
         '  "message" AS "body",\n' +
-        '  "level" AS "level"\n' +
+        '  "level"\n' +
         'FROM "doc"."demo_logs"\n' +
         'WHERE $__timeFilter("ts")\n' +
         'ORDER BY "ts" DESC\n' +

@@ -2,8 +2,8 @@
 
 ## Query variables
 
-A query variable gets the same SQL editor as a panel — schema, table and column autocomplete
-plus macro hover — rather than a plain text box.
+A query variable gets the same SQL editor as a panel, with schema, table and column autocomplete
+and macro hover.
 
 Variable queries run as table queries and resolve two ways:
 
@@ -22,8 +22,8 @@ SELECT "name" AS __text, "id" AS __value FROM "doc"."sensors" ORDER BY 1
 
 Following Grafana's built-in PostgreSQL data source:
 
-- **multi-select or *All*-capable variables** quote every value — `'Berlin','Vienna'` — so
-  they drop straight into an `IN (...)` list
+- **multi-select or *All*-capable variables** quote every value, producing `'Berlin','Vienna'`,
+  which drops straight into an `IN (...)` list
 - **single-value variables** stay unquoted, so they also work in identifier positions such as
   a table or column name (embedded quotes are still escaped)
 - numbers pass through unquoted
@@ -50,17 +50,26 @@ Ad-hoc filters work without setup. Keys are `table.column` pairs read from
 1000), and an active filter is injected into the `WHERE` clause of every query that reads
 that table.
 
-Columns whose type cannot back an equality predicate — `OBJECT`, `GEO_POINT`, `GEO_SHAPE` and
-arrays — are left out of the key list, so the picker only offers filters that produce valid
-CrateDB SQL. `OBJECT` sub-columns are kept, since those are individually comparable.
+A column whose type cannot back an equality predicate (`OBJECT`, `GEO_POINT`, `GEO_SHAPE`,
+`FLOAT_VECTOR`, `BIT`, arrays) is left out of the key list, so the picker only offers filters
+that produce valid CrateDB SQL. `OBJECT` sub-columns are kept, since those are individually
+comparable.
 
 On a large schema, add a dashboard **constant** or **textbox** variable named
 `cratedb_adhoc_tables` holding a comma-separated list of table names to narrow which tables
-feed the key picker. Names may be schema-qualified.
+feed the key picker. Ad-hoc filtering covers a single schema, the data source's default one, so
+a name qualified with that schema (`doc.metrics`) is accepted and any other qualifier matches
+nothing.
+
+### Where filters are not applied
+
+A filter is injected only into a query whose `FROM` is one plain table. Queries that join
+(explicitly or through a comma-separated list), use a CTE, a `UNION`, a subquery, or a variable
+as the table name run unfiltered. No panel notice marks the skip, so a dashboard mixing such
+queries with single-table ones will show some panels responding to the filter and others not.
 
 ### Adding the control
 
-On **Grafana 12 and later** the control is called **Filter** and no longer appears in the
-variable-type list: use **Edit → + Add → Filter and Group by**, then pick the CrateDB data
-source. On older versions it is the *Ad hoc filters* variable type. A dashboard-JSON variable
-of `"type": "adhoc"` works on every version.
+On **Grafana 12 and later** the control is called **Filter** and sits outside the variable-type
+list: use **Edit → + Add → Filter and Group by**, then pick the CrateDB data source. A
+dashboard-JSON variable of `"type": "adhoc"` works on every version.

@@ -17,7 +17,7 @@ fi
 echo "Building the plugin into dist/ ..."
 yarn install --immutable
 yarn build
-go run github.com/magefile/mage@v1.15.0 -v build:backend
+go run github.com/magefile/mage@v1.17.2 -v build:backend
 
 # dist/ is bind-mounted from the host; hand it back to the source tree's owner so
 # host tooling can clean it. No-op where the mount virtualizes ownership (macOS).

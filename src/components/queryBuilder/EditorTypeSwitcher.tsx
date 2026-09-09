@@ -66,17 +66,19 @@ export function EditorTypeSwitcher({ query, datasource, onChange, onRunQuery }: 
       }
       return;
     }
+    // A dashboard's saved target can arrive without rawSql at all.
+    const rawSql = query.rawSql ?? '';
     const stash = query.editorType !== EditorType.Builder ? query.meta?.builderOptions : undefined;
-    if (stash && query.rawSql.trim() === generateSql(stash).trim()) {
+    if (stash && rawSql.trim() === generateSql(stash).trim()) {
       toBuilder(stash);
       return;
     }
-    const parsed = parseSqlToBuilderOptions(query.rawSql, datasource.defaultSchema);
+    const parsed = parseSqlToBuilderOptions(rawSql, datasource.defaultSchema);
     if (parsed) {
       toBuilder(parsed);
       return;
     }
-    if (!query.rawSql.trim()) {
+    if (!rawSql.trim()) {
       toBuilder(stash ?? defaultBuilderOptions(datasource.defaultSchema));
       return;
     }

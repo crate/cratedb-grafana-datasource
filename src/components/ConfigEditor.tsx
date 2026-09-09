@@ -8,7 +8,16 @@ import {
 } from '@grafana/data';
 import { ConfigSection, ConfigSubSection, DataSourceDescription } from '@grafana/plugin-ui';
 import { config } from '@grafana/runtime';
-import { Combobox, ComboboxOption, Divider, Field, InlineSwitch, Input, SecretInput, SecretTextArea } from '@grafana/ui';
+import {
+  Combobox,
+  ComboboxOption,
+  Divider,
+  Field,
+  InlineSwitch,
+  Input,
+  SecretInput,
+  SecretTextArea,
+} from '@grafana/ui';
 
 import { DEFAULTS, DOCS_URL } from '../constants';
 import { joinHostURL, splitHostURL } from '../data/hostUrl';
@@ -88,7 +97,14 @@ export function ConfigEditor(props: Props) {
           invalid={!!httpPortWarning}
           error={httpPortWarning}
         >
-          <Input id="host" name="host" width={40} value={hostUrl} placeholder="localhost:5432" onChange={onHostURLChange} />
+          <Input
+            id="host"
+            name="host"
+            width={40}
+            value={hostUrl}
+            placeholder="localhost:5432"
+            onChange={onHostURLChange}
+          />
         </Field>
         <Field
           label="Default schema"
@@ -131,10 +147,7 @@ export function ConfigEditor(props: Props) {
             onReset={() => updateDatasourcePluginResetOption(props, 'password')}
           />
         </Field>
-        <Field
-          label="TLS/SSL Mode"
-          description="Whether, and how strictly, to negotiate TLS with the server."
-        >
+        <Field label="TLS/SSL Mode" description="Whether, and how strictly, to negotiate TLS with the server.">
           <Combobox
             id="tlsMode"
             options={TLS_MODES}
@@ -282,7 +295,7 @@ export function ConfigEditor(props: Props) {
           </Field>
           <Field
             label="Row limit"
-            description="Max rows read back per query; doesn't limit query cost server-side. Empty uses Grafana's dataproxy.row_limit."
+            description="Max rows read back per query; doesn't limit query cost server-side. Empty uses Grafana's dataproxy.row_limit, 1000000 unless the server changed it."
           >
             <Input
               id="rowLimit"
@@ -290,7 +303,7 @@ export function ConfigEditor(props: Props) {
               width={40}
               type="number"
               value={jsonData.rowLimit ?? ''}
-              placeholder="dataproxy.row_limit"
+              placeholder="1000000"
               onChange={onNumberOption('rowLimit')}
             />
           </Field>
@@ -327,34 +340,31 @@ export function ConfigEditor(props: Props) {
         </ConfigSubSection>
 
         <ConfigSubSection title="Connection limits">
-          <Field
-            label="Max open"
-            description="Maximum open connections to the database (0 = unlimited)."
-          >
+          <Field label="Max open" description="Maximum open connections to the database. Empty or 0 uses 100.">
             <Input
               id="maxOpenConnections"
               name="maxOpenConnections"
               width={40}
               type="number"
               value={jsonData.maxOpenConnections ?? ''}
-              placeholder="unlimited"
+              placeholder="100"
               onChange={onNumberOption('maxOpenConnections')}
             />
           </Field>
-          <Field label="Max idle" description="The maximum number of connections in the idle connection pool.">
+          <Field label="Max idle" description="Connections kept in the idle pool. Empty or 0 uses 100.">
             <Input
               id="maxIdleConnections"
               name="maxIdleConnections"
               width={40}
               type="number"
               value={jsonData.maxIdleConnections ?? ''}
-              placeholder="2"
+              placeholder="100"
               onChange={onNumberOption('maxIdleConnections')}
             />
           </Field>
           <Field
             label="Max lifetime"
-            description="Seconds a connection may be reused before it's recycled (0 = forever)."
+            description="Seconds a connection may be reused before it's recycled. Empty or 0 uses 14400."
           >
             <Input
               id="maxConnectionLifetime"
@@ -362,11 +372,14 @@ export function ConfigEditor(props: Props) {
               width={40}
               type="number"
               value={jsonData.maxConnectionLifetime ?? ''}
-              placeholder="unlimited"
+              placeholder="14400"
               onChange={onNumberOption('maxConnectionLifetime')}
             />
           </Field>
-          <Field label="Connect timeout (seconds)">
+          <Field
+            label="Connect timeout (seconds)"
+            description="Seconds to wait for a new connection. Empty waits as long as the network allows."
+          >
             <Input
               id="timeout"
               name="timeout"
@@ -377,7 +390,10 @@ export function ConfigEditor(props: Props) {
               onChange={onNumberOption('timeout')}
             />
           </Field>
-          <Field label="Query timeout (seconds)">
+          <Field
+            label="Query timeout (seconds)"
+            description="Seconds a query may run before it's cancelled. Empty or 0 uses 60."
+          >
             <Input
               id="queryTimeout"
               name="queryTimeout"

@@ -11,6 +11,11 @@ describe('escapeLiteral', () => {
   it('doubles single quotes', () => {
     expect(escapeLiteral("O'Brien")).toBe("O''Brien");
   });
+
+  it('leaves a backslash untouched', () => {
+    // standard_conforming_strings: a backslash is not an escape character here
+    expect(escapeLiteral('C:\\data')).toBe('C:\\data');
+  });
 });
 
 describe('escapeColumnRef', () => {

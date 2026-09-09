@@ -39,15 +39,13 @@ Pre-1.0, minor bumps may include breaking changes; note them prominently in the 
 
 ## Distribution
 
-Releases are unsigned, and Grafana loads an unsigned plugin only where an admin allows the plugin
-id explicitly — self-hosted instances, never Grafana Cloud. The README's *Installation* section is
-what users follow.
+Releases are unsigned, which limits them to self-hosted instances whose admin allows the plugin id
+explicitly; [the README](README.md#installation) is what users follow and why the plugin carries no
+signature yet.
 
-Grafana signs a plugin offered by a for-profit business at the `commercial` level, which carries a
-paid Commercial Plugin Subscription ([plugin policy](https://grafana.com/legal/plugins/)). Signing
-would also need a [grafana.com](https://grafana.com) organization whose slug matches the plugin id
-prefix (`cratedb-`) and an access-policy token with the `plugins:write` scope stored as
-`GRAFANA_ACCESS_POLICY_TOKEN`. The tooling is already wired for that day:
+Signing needs an access-policy token with the `plugins:write` scope, stored as
+`GRAFANA_ACCESS_POLICY_TOKEN` and issued by a [grafana.com](https://grafana.com) organization whose
+slug matches the plugin-id prefix (`cratedb-`). The tooling is already wired for that day:
 
 ```bash
 make build
@@ -68,8 +66,12 @@ The workflow can be exercised end to end without touching this repository:
 ## Checklist
 
 - [ ] CHANGELOG section exists for the version (`make release-notes VERSION=X.Y.Z` prints it)
+- [ ] The CHANGELOG heading for the version carries no `(unreleased)` marker (`make release-notes`
+      refuses it)
 - [ ] `make check-version VERSION=X.Y.Z` passes on main
 - [ ] CI green on main (including the CrateDB version matrix)
 - [ ] `make validate` green locally (the same plugin-validator gate the release workflow runs)
+- [ ] `make qa` run and its `qa-artifacts/` screenshots read through, on the oldest supported
+      Grafana as well as the current one (`GRAFANA_VERSION=... make up` first)
 - [ ] Screenshots still match the current UI (`make screenshots` regenerates them)
 - [ ] Tag pushed; release workflow green; draft release reviewed and published

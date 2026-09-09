@@ -121,7 +121,7 @@ jobs:
         run: |
           zips=(cratedb-cratedb-datasource-*.zip)
           zipfile=${zips[0]}
-          npx --yes @grafana/plugin-validator@0.44.2 -sourceCodeUri "file://$(pwd)" "$zipfile"
+          npx --yes @grafana/plugin-validator@0.45.9 -sourceCodeUri "file://$(pwd)" "$zipfile"
 
       # `make release-notes` prints the tagged version's CHANGELOG section
       # (and fails if it's missing — preview locally before tagging). The

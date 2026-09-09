@@ -228,7 +228,8 @@ function tableIdent(options: BuilderOptions): string {
 function columnExpr(column: SelectedColumn): string {
   const ref = escapeColumnRef(column.column);
   const alias = column.hint ? HINT_ALIAS[column.hint] : column.alias;
-  return alias ? `${ref} AS ${escapeIdentifier(alias)}` : ref;
+  // A column already carrying the name the panel expects needs no alias.
+  return alias && alias !== column.column ? `${ref} AS ${escapeIdentifier(alias)}` : ref;
 }
 
 function aggregateExpr(aggregate: AggregateColumn): string {

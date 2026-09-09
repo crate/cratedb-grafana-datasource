@@ -1,4 +1,5 @@
 import { expect, Page } from '@grafana/plugin-e2e';
+import type { Locator } from '@playwright/test';
 
 // Monaco doesn't run under jsdom, so these behaviours (real autocomplete, the
 // editor filling its flex container) only exist in the browser tier.
@@ -79,8 +80,42 @@ export async function openSuggestions(page: Page): Promise<string[]> {
   return widget.locator('.monaco-list-row').allInnerTexts();
 }
 
+// Grafana's combobox re-renders its list as it filters, so an option can move
+// out from under a pointer between the actionability check and the click. The
+// keyboard path commits the highlighted option without touching the list, but
+// the highlighted index lags one render behind the filtered-in option: acting
+// the instant it appears re-selects whatever was highlighted before filtering,
+// or catches the list mid-render and hangs the tab. The pause lets that index
+// catch up before ArrowDown moves it.
+export async function pickComboboxOption(page: Page, combobox: Locator, option: string) {
+  const entry = page.getByRole('option', { name: option }).first();
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await combobox.click();
+    await combobox.press('ControlOrMeta+A');
+    await combobox.pressSequentially(option);
+    await expect(entry).toBeVisible({ timeout: 15_000 });
+    await page.waitForTimeout(300);
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    if (await combobox.inputValue().then((value) => value === option)) {
+      return;
+    }
+    await page.keyboard.press('Escape');
+  }
+  await expect(combobox).toHaveValue(option);
+}
+
+// Grafana renders a panel when it scrolls into view; a locator for one that
+// has never been on screen resolves to nothing, so walk the page first.
+export async function scrollDashboardToBottom(page: Page) {
+  for (let step = 0; step < 6; step++) {
+    await page.mouse.wheel(0, 900);
+    await page.waitForTimeout(600);
+  }
+}
+
 // Assert every panel on the current dashboard rendered without an error icon.
-// Iterates the panel titles found in the DOM so it can't silently pass on zero.
+// The title list is the caller's; the length guard keeps an empty list from passing vacuously.
 export async function expectAllPanelsHealthy(page: Page, titles: string[]) {
   expect(titles.length).toBeGreaterThan(0);
   for (const title of titles) {

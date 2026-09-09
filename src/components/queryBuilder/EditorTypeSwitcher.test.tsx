@@ -36,6 +36,18 @@ describe('EditorTypeSwitcher', () => {
     expect(screen.getByRole('radio', { name: 'Builder' })).not.toBeChecked();
   });
 
+  it('opens the builder for a target that carries no SQL at all', async () => {
+    const props = makeProps({});
+    delete (props.query as Partial<CrateDBQuery>).rawSql;
+    render(<EditorTypeSwitcher {...props} />);
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Builder' }));
+
+    expect(props.onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ editorType: EditorType.Builder, builderOptions: defaultBuilderOptions('doc') })
+    );
+  });
+
   it('hands generated SQL over and stashes the builder state on switch to SQL', async () => {
     const options = builderState();
     const props = makeProps({

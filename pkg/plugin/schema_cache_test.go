@@ -1,6 +1,8 @@
 package plugin
 
 import (
+	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -51,6 +53,56 @@ func TestSchemaCache(t *testing.T) {
 		assert.NotNil(t, c.get("k"))
 		assert.Empty(t, c.get("k"))
 	})
+
+	t.Run("a caller mutating the slice it stored can't corrupt the cache", func(t *testing.T) {
+		var c schemaCache
+		c.reset(time.Minute)
+		values := []string{"a"}
+		c.put("k", values)
+		values[0] = "mutated by the caller"
+		assert.Equal(t, []string{"a"}, c.get("k"))
+	})
+
+	t.Run("put evicts entries nobody read back", func(t *testing.T) {
+		var c schemaCache
+		c.reset(10 * time.Millisecond)
+		c.put("stale", []string{"a"})
+		time.Sleep(20 * time.Millisecond)
+		c.put("fresh", []string{"b"})
+
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		assert.NotContains(t, c.entries, "stale")
+		assert.Contains(t, c.entries, "fresh")
+	})
+}
+
+func TestSchemaCacheConcurrentAccess(t *testing.T) {
+	var c schemaCache
+	c.reset(time.Millisecond)
+
+	keys := []string{"schemas", "tables/doc", "columns/doc/metrics"}
+	var wg sync.WaitGroup
+	for worker := 0; worker < 8; worker++ {
+		wg.Add(1)
+		go func(worker int) {
+			defer wg.Done()
+			for i := 0; i < 200; i++ {
+				key := keys[i%len(keys)]
+				if values := c.get(key); values != nil {
+					values[0] = "mutated by the caller"
+				}
+				c.put(key, []string{key, strconv.Itoa(worker)})
+			}
+		}(worker)
+	}
+	wg.Wait()
+
+	for _, key := range keys {
+		if values := c.get(key); values != nil {
+			assert.Equal(t, key, values[0], "a caller mutated the cached slice")
+		}
+	}
 }
 
 func TestCacheKey(t *testing.T) {

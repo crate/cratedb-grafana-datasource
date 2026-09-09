@@ -17,9 +17,7 @@ describe('AdHocFilter', () => {
 
   it('injects a WHERE and quotes string values', () => {
     const f = new AdHocFilter('doc');
-    expect(f.apply('SELECT * FROM weather', [filter({})])).toBe(
-      `SELECT * FROM weather WHERE ("location" = 'Berlin')`
-    );
+    expect(f.apply('SELECT * FROM weather', [filter({})])).toBe(`SELECT * FROM weather WHERE ("location" = 'Berlin')`);
   });
 
   it('skips queries on other tables', () => {
@@ -30,7 +28,10 @@ describe('AdHocFilter', () => {
 
   it('joins multiple filters with AND', () => {
     const f = new AdHocFilter('doc');
-    const got = f.apply('SELECT * FROM weather', [filter({}), filter({ key: 'weather.temp', operator: '>', value: '20' })]);
+    const got = f.apply('SELECT * FROM weather', [
+      filter({}),
+      filter({ key: 'weather.temp', operator: '>', value: '20' }),
+    ]);
     expect(got).toContain(`WHERE ("location" = 'Berlin' AND "temp" > '20')`);
   });
 
@@ -43,6 +44,24 @@ describe('AdHocFilter', () => {
     expect(f.apply('SELECT * FROM weather', [filter({ key: 'weather.active', value: 'true' })])).toContain(
       `"active" = 'true'`
     );
+  });
+
+  it.each([
+    ['=', `"location" = 'Berlin'`],
+    ['!=', `"location" != 'Berlin'`],
+    ['<>', `"location" <> 'Berlin'`],
+    ['<', `"location" < 'Berlin'`],
+    ['<=', `"location" <= 'Berlin'`],
+    ['>', `"location" > 'Berlin'`],
+    ['>=', `"location" >= 'Berlin'`],
+    ['=~', `"location" ~ 'Berlin'`],
+    ['!~', `"location" !~ 'Berlin'`],
+    ['IN', `"location" IN ('Berlin')`],
+    ['NOT IN', `"location" NOT IN ('Berlin')`],
+  ])('maps the %s operator to CrateDB syntax', (operator, expected) => {
+    const f = new AdHocFilter('doc');
+    const got = f.apply('SELECT * FROM weather', [filter({ operator, value: 'Berlin' })]);
+    expect(got).toContain(expected);
   });
 
   it('ignores filters whose operator is not on the allowlist', () => {
@@ -58,18 +77,19 @@ describe('AdHocFilter', () => {
     expect(f.apply('SELECT * FROM weather', [filter({ value: "O'Brien" })])).toContain(`'O''Brien'`);
   });
 
-  it('maps regex operators to CrateDB syntax', () => {
+  it('leaves a backslash untouched in a value', () => {
     const f = new AdHocFilter('doc');
-    expect(f.apply('SELECT * FROM weather', [filter({ operator: '=~', value: 'Ber.*' })])).toContain(
-      `"location" ~ 'Ber.*'`
-    );
+    expect(f.apply('SELECT * FROM weather', [filter({ value: 'C:\\data' })])).toContain(`'C:\\data'`);
+  });
+
+  it('keeps a non-ASCII value intact', () => {
+    const f = new AdHocFilter('doc');
+    expect(f.apply('SELECT * FROM weather', [filter({ value: 'Zürich 東京' })])).toContain(`'Zürich 東京'`);
   });
 
   it('strips a trailing semicolon', () => {
     const f = new AdHocFilter('doc');
-    expect(f.apply('SELECT * FROM weather;', [filter({})])).toBe(
-      `SELECT * FROM weather WHERE ("location" = 'Berlin')`
-    );
+    expect(f.apply('SELECT * FROM weather;', [filter({})])).toBe(`SELECT * FROM weather WHERE ("location" = 'Berlin')`);
   });
 
   it('skips filters whose key has no table prefix', () => {
@@ -77,6 +97,12 @@ describe('AdHocFilter', () => {
     const sql = 'SELECT * FROM weather';
     // an un-prefixed key can't be resolved to a table, so it must not be applied
     expect(f.apply(sql, [filter({ key: 'location' })])).toBe(sql);
+  });
+
+  it('skips a schema-qualified key, which getTagKeys never emits', () => {
+    const f = new AdHocFilter('doc');
+    const sql = 'SELECT * FROM weather';
+    expect(f.apply(sql, [filter({ key: 'doc.weather.location' })])).toBe(sql);
   });
 
   it('applies only the filters keyed to the query table, skipping the rest', () => {
@@ -96,8 +122,8 @@ describe('AdHocFilter', () => {
     expect(f.apply(sql, [filter({ key: 'nodes.name', value: 'n1' })])).toBe(sql);
   });
 
-  // ad-hoc filters must land in the query's own WHERE (before GROUP BY), not wrap
-  // the aggregated result, which would reference a column it no longer exposes
+  // the predicate has to constrain rows before aggregation: the aggregated
+  // projection no longer carries the filtered column
   it('ANDs into an existing WHERE, before GROUP BY', () => {
     const f = new AdHocFilter('doc');
     expect(f.apply('SELECT count(*) AS value FROM weather WHERE ts > 0 GROUP BY 1', [filter({})])).toBe(
@@ -130,6 +156,14 @@ describe('AdHocFilter', () => {
     const f = new AdHocFilter('doc');
     const sql = 'SELECT sub.location FROM (SELECT location FROM weather) AS sub';
     expect(f.apply(sql, [filter({})])).toBe(sql);
+  });
+
+  it('leaves a joined query unchanged', () => {
+    const f = new AdHocFilter('doc');
+    const join = 'SELECT * FROM weather JOIN sensors ON weather.id = sensors.weather_id';
+    expect(f.apply(join, [filter({})])).toBe(join);
+    const commaJoin = 'SELECT * FROM weather, sensors';
+    expect(f.apply(commaJoin, [filter({})])).toBe(commaJoin);
   });
 
   it('preserves Grafana macros when injecting (the default template shape)', () => {

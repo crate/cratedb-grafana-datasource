@@ -4,7 +4,7 @@ import { TLSMode } from './types';
 // server-side (DATE_BIN) keeps the result size close to panel pixels, not row count
 export const TIMESERIES_QUERY_TEMPLATE = `SELECT
   $__timeGroupAlias("ts", $__interval),
-  count(*) AS value
+  count(*) AS "value"
 FROM "doc"."demo_metrics"
 WHERE $__timeFilter("ts")
 GROUP BY 1

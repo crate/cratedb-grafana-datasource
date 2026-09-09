@@ -80,7 +80,7 @@ export function stripComments(sql: string): string {
   return out;
 }
 
-/** returns the index just past the closing quote (doubled quotes escape) */
+// returns the index just past the closing quote (doubled quotes escape)
 function skipQuoted(sql: string, start: number): number {
   const quote = sql[start];
   let i = start + 1;
@@ -101,10 +101,8 @@ function isWordChar(ch: string | undefined): boolean {
   return !!ch && /[\w$]/.test(ch);
 }
 
-/**
- * Projection list of the first top-level SELECT, split on commas outside parens
- * and quotes. Subquery SELECT/FROM/commas sit at depth > 0, so they stay intact.
- */
+// Projection list of the first top-level SELECT, split on commas outside parens
+// and quotes. Subquery SELECT/FROM/commas sit at depth > 0, so they stay intact.
 function selectProjections(sql: string): string[] {
   const lower = sql.toLowerCase();
   const projections: string[] = [];

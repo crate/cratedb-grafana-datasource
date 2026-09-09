@@ -28,8 +28,10 @@ services:
       cratedb:
         condition: service_healthy
 
+  # Pinned to a current release so a fresh `up` is reproducible; override with
+  # GRAFANA_VERSION.
   grafana:
-    image: grafana/grafana:${GRAFANA_VERSION:-latest}
+    image: grafana/grafana:${GRAFANA_VERSION:-13.2.1}
     ports:
       - "3000:3000"
     volumes:

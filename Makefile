@@ -4,10 +4,10 @@
 
 # Yarn 4 is required by @grafana/plugin-ui (engines field; yarn 1 hard-fails).
 # If the local yarn is not v4 (or missing), fall back to a pinned one-shot via npx.
-YARN := $(shell yarn --version 2>/dev/null | grep -q '^4\.' && echo yarn || echo npx -y -p @yarnpkg/cli-dist@4.17.0 yarn)
+YARN := $(shell yarn --version 2>/dev/null | grep -q '^4\.' && echo yarn || echo npx -y -p @yarnpkg/cli-dist@4.18.0 yarn)
 
 # Mage drives the plugin SDK's backend build; fall back to go run if not installed.
-MAGE := $(shell command -v mage >/dev/null 2>&1 && echo mage || echo go run github.com/magefile/mage@v1.15.0)
+MAGE := $(shell command -v mage >/dev/null 2>&1 && echo mage || echo go run github.com/magefile/mage@v1.17.2)
 
 # CrateDB release images are amd64-only; default to nightly on ARM hosts.
 # Override explicitly with CRATEDB_IMAGE=crate/crate:<tag>.
@@ -78,7 +78,7 @@ lint: ## Lint everything (gofmt, go vet, golangci-lint, actionlint, eslint, tsc)
 	@fmt_out="$$(gofmt -l pkg/ Magefile.go)"; \
 	if [ -n "$$fmt_out" ]; then echo "$$fmt_out"; echo "gofmt: files need formatting (run 'make format')"; exit 1; fi
 	go vet ./pkg/...
-	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run ./pkg/...
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2 run ./pkg/...
 	go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 .github/workflows/*.yml
 	$(YARN) lint
 	$(YARN) typecheck
@@ -139,8 +139,22 @@ e2e: ensure-dist ## Deployed-plugin tests vs CrateDB + Grafana (set GRAFANA_URL 
 e2e-browser: ensure-dist ## Browser smoke tests vs the compose stack (Playwright)
 	@chmod +x dist/gpx_cratedb_* 2>/dev/null || true
 	CRATEDB_VERSION=$(CRATEDB_VERSION) docker compose up -d --build --wait
+	./scripts/seed.sh
 	$(YARN) playwright install chromium
 	$(YARN) e2e:browser
+
+# Chrome-driven walk over every user-facing surface, written for a human to
+# review: it asserts what can be asserted and leaves a screenshot per step in
+# qa-artifacts/. QA=1 is what admits the project into the Playwright run, so an
+# unqualified `playwright test` (CI) never schedules it.
+.PHONY: qa
+qa: ensure-dist ## Manual-QA browser sweep; screenshots land in qa-artifacts/
+	@chmod +x dist/gpx_cratedb_* 2>/dev/null || true
+	CRATEDB_VERSION=$(CRATEDB_VERSION) docker compose up -d --build --wait
+	./scripts/seed.sh
+	$(YARN) playwright install chromium
+	rm -rf qa-artifacts
+	QA=1 $(YARN) playwright test --project=qa
 
 ##@ Dev stack (Docker Compose)
 
@@ -173,7 +187,7 @@ screenshots: ## Regenerate src/img/screenshots/*.png from the dev stack
 		'http://localhost:3000/d/cratedb-cluster-health?kiosk' src/img/screenshots/cluster-health.png
 	$(YARN) playwright screenshot --viewport-size=1600,1300 --wait-for-timeout=9000 \
 		'http://localhost:3000/d/cratedb-getting-started?kiosk' src/img/screenshots/getting-started.png
-	$(YARN) playwright test --project=screenshots
+	SCREENSHOTS=1 $(YARN) playwright test --project=screenshots
 
 ##@ Release
 
@@ -194,10 +208,12 @@ check-version: ## Assert VERSION=x.y.z matches package.json (release guard)
 # package.json) to stdout — the release workflow uses it as the GitHub
 # release body; run locally to preview it before tagging. Fails loudly when
 # the section is missing (a malformed "## x.y.z" heading would otherwise
-# ship a release with empty notes).
+# ship a release with empty notes) or still marked "(unreleased)".
 .PHONY: release-notes
 release-notes: ## Print the CHANGELOG section for VERSION (default: package.json)
 	@version="$(or $(VERSION),$(shell jq -r .version package.json))"; \
+	heading=$$(awk -v ver="$$version" ' \
+		$$0 ~ "^## " && $$2 == ver { print; exit }' CHANGELOG.md); \
 	notes=$$(awk -v ver="$$version" ' \
 		$$0 ~ "^## " { in_section = ($$2 == ver) ; next } \
 		in_section { print }' CHANGELOG.md); \
@@ -205,6 +221,11 @@ release-notes: ## Print the CHANGELOG section for VERSION (default: package.json
 		echo "error: no CHANGELOG.md section found for version $$version" >&2; \
 		exit 1; \
 	fi; \
+	case "$$heading" in \
+		*"(unreleased)"*) \
+			echo "error: CHANGELOG.md heading for $$version still says (unreleased); drop the marker before tagging" >&2; \
+			exit 1;; \
+	esac; \
 	printf '%s\n' "$$notes"
 
 # Mirrors the release workflow's validator gate: package dist/ and run the
@@ -214,7 +235,7 @@ release-notes: ## Print the CHANGELOG section for VERSION (default: package.json
 validate: package ## Package dist/ and run the catalog plugin-validator on it
 	@id=$$(jq -r .id dist/plugin.json); \
 	version=$$(jq -r .info.version dist/plugin.json); \
-	npx --yes @grafana/plugin-validator@0.44.2 -sourceCodeUri "file://$$(pwd)" "$$id-$$version.zip"
+	npx --yes @grafana/plugin-validator@0.45.9 -sourceCodeUri "file://$$(pwd)" "$$id-$$version.zip"
 
 .PHONY: sign
 sign: ## Sign the plugin locally (@grafana/sign-plugin; needs policy token)

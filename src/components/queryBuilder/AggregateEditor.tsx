@@ -1,9 +1,10 @@
 import React from 'react';
 
-import { Button, Combobox, ComboboxOption, IconButton, Input, Stack } from '@grafana/ui';
+import { Button, Combobox, ComboboxOption, IconButton, Stack } from '@grafana/ui';
 
 import { columnKind } from '../../data/columnTypes';
 import { AggregateColumn, AggregateType, ColumnMeta } from '../../types';
+import { CommitOnBlurInput } from './CommitOnBlurInput';
 
 interface Props {
   columns: ColumnMeta[];
@@ -65,19 +66,11 @@ export function AggregateEditor({ columns, value, onChange }: Props) {
             placeholder="Column"
             width={25}
           />
-          <Input
-            // controlled so a middle-row delete can't leave stale text on a
-            // shifted row; typing updates state without running, blur/Enter runs
+          <CommitOnBlurInput
             value={aggregate.alias ?? ''}
             placeholder="Alias"
             width={16}
-            onChange={(event) => update(index, { alias: event.currentTarget.value || undefined }, false)}
-            onBlur={(event) => update(index, { alias: event.currentTarget.value || undefined }, true)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                update(index, { alias: event.currentTarget.value || undefined }, true);
-              }
-            }}
+            onCommit={(alias, run) => update(index, { alias: alias || undefined }, run)}
           />
           <IconButton
             name="trash-alt"

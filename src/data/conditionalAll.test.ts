@@ -46,6 +46,11 @@ describe('applyConditionalAll', () => {
     );
   });
 
+  it('terminates on a malformed occurrence at offset 0', () => {
+    expect(applyConditionalAll('$__conditionalAll(a)', [])).toBe('$__conditionalAll(a)');
+    expect(applyConditionalAll('$__conditionalAll(a, b, c)', [])).toBe('$__conditionalAll(a, b, c)');
+  });
+
   it('degrades to 1=1 for an array-valued All selection', () => {
     const arrayVar = { name: 'loc', current: { value: ['$__all'] } } as unknown as TypedVariableModel;
     expect(applyConditionalAll(sql, [arrayVar])).toBe('SELECT * FROM t WHERE 1=1');

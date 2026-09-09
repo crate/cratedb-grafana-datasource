@@ -6,11 +6,16 @@ import { TIMESERIES_QUERY_TEMPLATE, LOGS_QUERY_TEMPLATE } from '../constants';
 import { MACROS } from '../editor/macros';
 import { CrateDBQuery, QueryFormat } from '../types';
 
+// selectedFormat is what the picker reads; an example that set only format
+// left the picker on whatever the query had before.
 const LOGS_EXAMPLE: CrateDBQuery = {
   refId: 'A',
   rawSql: LOGS_QUERY_TEMPLATE,
   format: QueryFormat.Logs,
+  selectedFormat: QueryFormat.Logs,
 };
+
+const ANNOTATION_QUERY_EXAMPLE = `SELECT ts AS time, title AS text, array_to_string(tags, ',') AS tags FROM doc.demo_events WHERE $__timeFilter(ts)`;
 
 // help panel behind the "?" in the query editor; shows the server-side
 // aggregation pattern
@@ -33,30 +38,37 @@ export function CheatSheet({ onClickExample }: QueryEditorHelpProps<CrateDBQuery
             refId: 'A',
             rawSql: TIMESERIES_QUERY_TEMPLATE,
             format: QueryFormat.Timeseries,
+            selectedFormat: QueryFormat.Timeseries,
           })
         }
       >
         Use the recommended template
       </button>
+      <p>
+        This template names <code>doc.demo_metrics</code>, one of the tables the plugin&apos;s dev stack seeds; swap in
+        your own table and timestamp column.
+      </p>
       <pre>
         <code>{TIMESERIES_QUERY_TEMPLATE}</code>
       </pre>
 
       <h2>Macros</h2>
-      <table className="filter-table">
+      {/* Grafana's filter-table keeps cells on one line, which pushes the
+          descriptions past the help pane with nothing to scroll. */}
+      <table className="filter-table" style={{ width: '100%', tableLayout: 'fixed' }}>
         <thead>
           <tr>
-            <th>Macro</th>
+            <th style={{ width: '15em' }}>Macro</th>
             <th>Description</th>
           </tr>
         </thead>
         <tbody>
           {MACROS.map((macro) => (
             <tr key={macro.id}>
-              <td>
+              <td style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
                 <code>{macro.id}</code>
               </td>
-              <td>{macro.description}</td>
+              <td style={{ whiteSpace: 'normal' }}>{macro.description}</td>
             </tr>
           ))}
         </tbody>
@@ -71,15 +83,29 @@ export function CheatSheet({ onClickExample }: QueryEditorHelpProps<CrateDBQuery
       <button type="button" className="btn btn-secondary" onClick={() => onClickExample(LOGS_EXAMPLE)}>
         Use the logs template
       </button>
+      <p>
+        This template names <code>doc.demo_logs</code>, one of the tables the plugin&apos;s dev stack seeds; swap in
+        your own table and timestamp column.
+      </p>
       <pre>
         <code>{LOGS_QUERY_TEMPLATE}</code>
       </pre>
 
+      <h2>Annotations</h2>
+      <p>
+        An annotation query returns <code>time</code> (timestamp), optionally <code>timeEnd</code>, <code>text</code>,
+        and <code>tags</code>. CrateDB array columns need <code>array_to_string(tags, &apos;,&apos;) AS tags</code>,
+        since Grafana expects a comma-separated string.
+      </p>
+      <pre>
+        <code>{ANNOTATION_QUERY_EXAMPLE}</code>
+      </pre>
+
       <h2>Ad-hoc filters</h2>
       <p>
-        Ad-hoc filter keys are the filterable columns (<code>table.column</code>) of every table in the default
-        schema. On large schemas, add a dashboard constant or textbox variable named{' '}
-        <code>cratedb_adhoc_tables</code> with a comma-separated list of table names to narrow the key picker.
+        Ad-hoc filter keys are the filterable columns (<code>table.column</code>) of every table in the default schema.
+        On large schemas, add a dashboard constant or textbox variable named <code>cratedb_adhoc_tables</code> with a
+        comma-separated list of table names to narrow the key picker.
       </p>
 
       <h2>Query plans</h2>
@@ -98,6 +124,23 @@ export function CheatSheet({ onClickExample }: QueryEditorHelpProps<CrateDBQuery
         <li>
           The <code>sys</code> schema is queryable like any other table, useful for cluster monitoring (
           <code>sys.nodes</code>, <code>sys.shards</code>, <code>sys.jobs_log</code>).
+        </li>
+        <li>
+          <code>OBJECT</code> sub-columns are addressed as <code>&quot;tags&quot;[&apos;host&apos;]</code>, e.g.{' '}
+          <code>SELECT &quot;tags&quot;[&apos;host&apos;] FROM t</code>. Autocomplete lists them the way{' '}
+          <code>information_schema</code> reports them, as <code>tags[&apos;host&apos;]</code>.
+        </li>
+        <li>
+          Arrays are expanded with <code>UNNEST</code> in the select list, e.g.{' '}
+          <code>SELECT UNNEST(tags) AS tag FROM t</code>; in the <code>FROM</code> clause, <code>UNNEST</code> cannot{' '}
+          reference the same query&apos;s table. Membership is tested with <code>ANY</code>, e.g.{' '}
+          <code>SELECT * FROM t WHERE &apos;deploy&apos; = ANY(tags)</code>.
+        </li>
+        <li>
+          A whole <code>OBJECT</code> or array column can be selected and renders as JSON. Neither type compares against
+          a text literal, which is the only form an ad-hoc filter value takes, so such columns are not offered as ad-hoc
+          filter keys; <code>FLOAT_VECTOR</code> and <code>BIT</code> are left out for the same reason. A sub-column like{' '}
+          <code>tags[&apos;host&apos;]</code> is.
         </li>
       </ul>
     </div>

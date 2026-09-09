@@ -43,6 +43,8 @@ yarn-error.log*
 playwright-report/
 test-results/
 playwright/.auth/
+# screenshots from `make qa`, reviewed by eye and thrown away
+qa-artifacts/
 
 # --- Local dev environment ---------------------------------------------------
 # docker compose overrides (GRAFANA_VERSION, CRATEDB_VERSION, secrets)

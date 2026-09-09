@@ -1,10 +1,12 @@
 import React from 'react';
 
-import { Button, Combobox, ComboboxOption, IconButton, Input, MultiCombobox, RadioButtonGroup, Stack } from '@grafana/ui';
+import { Button, Combobox, ComboboxOption, IconButton, RadioButtonGroup, Stack } from '@grafana/ui';
 
 import { columnKind } from '../../data/columnTypes';
 import { ColumnKind, ColumnMeta, Filter, FilterOperator } from '../../types';
 import { ColumnSelect } from './ColumnSelect';
+import { CommitOnBlurInput } from './CommitOnBlurInput';
+import { ValueListInput } from './ValueListInput';
 
 // filter-row editor: column, operator (narrowed by the column's kind), a value
 // editor matching the operator, and the AND/OR joiner with the previous row
@@ -60,6 +62,11 @@ const BOOLEAN_VALUES: Array<ComboboxOption<string>> = [
   { label: 'false', value: 'false' },
 ];
 
+// The stored operator is SQL; only the one that isn't reads as prose.
+const OPERATOR_LABELS: Partial<Record<FilterOperator, string>> = {
+  [FilterOperator.WithinTimeRange]: 'Within dashboard time range',
+};
+
 function valueless(operator: FilterOperator): boolean {
   return NULL_OPERATORS.includes(operator) || operator === FilterOperator.WithinTimeRange;
 }
@@ -79,39 +86,23 @@ function ValueEditor({
   if (filter.operator === FilterOperator.In || filter.operator === FilterOperator.NotIn) {
     const values = Array.isArray(filter.value) ? filter.value : filter.value ? [filter.value] : [];
     return (
-      <MultiCombobox
-        options={values.map((entry) => ({ label: entry, value: entry }))}
-        value={values}
-        onChange={(picked) => onCommit(picked.map((entry) => entry.value))}
-        createCustomValue
-        placeholder="Values"
-        width={30}
-      />
+      <ValueListInput values={values} placeholder="Values, comma separated" width={30} onCommit={onCommit} />
     );
   }
   if (kind === 'boolean') {
     const value = Array.isArray(filter.value) ? undefined : filter.value;
     return (
-      <Combobox options={BOOLEAN_VALUES} value={value ?? null} onChange={(v) => onCommit(v.value)} width={12} />
+      <Combobox
+        options={BOOLEAN_VALUES}
+        value={value ?? null}
+        onChange={(v) => onCommit(v.value)}
+        placeholder="true / false"
+        width={12}
+      />
     );
   }
-  // controlled so a middle-row delete can't leave stale text on a shifted row;
-  // typing updates state without running, blur/Enter runs
   const value = Array.isArray(filter.value) ? '' : (filter.value ?? '');
-  return (
-    <Input
-      value={value}
-      placeholder="Value"
-      width={25}
-      onChange={(event) => onCommit(event.currentTarget.value, false)}
-      onBlur={(event) => onCommit(event.currentTarget.value, true)}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter') {
-          onCommit(event.currentTarget.value, true);
-        }
-      }}
-    />
-  );
+  return <CommitOnBlurInput value={value} placeholder="Value" width={25} onCommit={onCommit} />;
 }
 
 export function FilterEditor({ columns, value, onChange }: Props) {
@@ -134,14 +125,17 @@ export function FilterEditor({ columns, value, onChange }: Props) {
   return (
     <Stack direction="column" gap={0.5}>
       {value.map((filter, index) => (
-        <Stack key={index} gap={0.5} alignItems="center">
-          {index > 0 && (
+        <Stack key={index} gap={0.5} alignItems="center" wrap="wrap">
+          {/* The first row has nothing to join, but it keeps the joiner's
+              footprint so every row's pickers line up. Hidden this way it is
+              also out of the tab order. */}
+          <div style={{ visibility: index > 0 ? 'visible' : 'hidden', flex: 'none' }}>
             <RadioButtonGroup
               options={CONDITIONS}
               value={filter.condition}
               onChange={(condition) => update(index, { condition })}
             />
-          )}
+          </div>
           <ColumnSelect
             columns={columns}
             kinds={['time', 'number', 'string', 'boolean']}
@@ -152,7 +146,10 @@ export function FilterEditor({ columns, value, onChange }: Props) {
             }
           />
           <Combobox
-            options={operatorsFor(effectiveKind(filter)).map((operator) => ({ label: operator, value: operator }))}
+            options={operatorsFor(effectiveKind(filter)).map((operator) => ({
+              label: OPERATOR_LABELS[operator] ?? operator,
+              value: operator,
+            }))}
             value={filter.operator}
             onChange={(selected) =>
               update(index, { operator: selected.value, ...(valueless(selected.value) ? { value: undefined } : {}) })
