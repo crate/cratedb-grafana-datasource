@@ -1,7 +1,7 @@
 {
   "title": "CrateDB Cluster Health",
   "uid": "cratedb-cluster-health",
-  "description": "Cluster health from CrateDB's sys schema: top-line health rollup, shards, node CPU/heap/disk/load, query throughput & latency, and CrateDB's own checks. Reads permission-scoped sys tables — connect the datasource as a user with at least DQL on schema sys (cluster DQL works); the cluster-wide job panels need a superuser or AL on cluster, otherwise they show only that user's own jobs.",
+  "description": "Cluster health from CrateDB's sys schema: top-line health rollup, shards, node CPU/heap/disk/load, query throughput & latency, and CrateDB's own checks. Reads permission-scoped sys tables \u2014 connect the datasource as a user with at least DQL on schema sys (cluster DQL works); the cluster-wide job panels need a superuser or AL on cluster, otherwise they show only that user's own jobs.",
   "tags": [
     "cratedb",
     "monitoring"
@@ -21,7 +21,10 @@
         "label": "CrateDB datasource",
         "type": "datasource",
         "query": "cratedb-cratedb-datasource",
-        "current": {},
+        "current": {
+          "text": "default",
+          "value": "default"
+        },
         "hide": 0,
         "refresh": 1
       }
@@ -40,7 +43,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "**Cluster health** — a live view of CrateDB's `sys` tables. Point the *CrateDB datasource* variable at your cluster. The datasource user needs at least `DQL ON SCHEMA sys` (cluster DQL works). The **Query activity** panels show cluster-wide jobs only when that user is a superuser or holds `AL ON CLUSTER` — otherwise they show just that user's own jobs. Panels with no rows (unassigned shards, failed checks) are the healthy state, not an error."
+        "content": "**Cluster health** \u2014 a live view of CrateDB's `sys` tables. Point the *CrateDB datasource* variable at your cluster. The datasource user needs at least `DQL ON SCHEMA sys` (cluster DQL works). The **Query activity** panels show cluster-wide jobs only when that user is a superuser or holds `AL ON CLUSTER` \u2014 otherwise they show just that user's own jobs. Panels with no rows (unassigned shards, failed checks) are the healthy state, not an error."
       }
     },
     {
@@ -129,7 +132,7 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 3,
+        "w": 2,
         "x": 4,
         "y": 4
       },
@@ -152,15 +155,15 @@
       "id": 12,
       "type": "stat",
       "title": "Missing shards",
-      "description": "Primary shards with no allocated copy (from sys.cluster_health). Anything above 0 means data is currently unavailable — a RED condition.",
+      "description": "Primary shards with no allocated copy (from sys.cluster_health). Anything above 0 means data is currently unavailable \u2014 a RED condition.",
       "datasource": {
         "type": "cratedb-cratedb-datasource",
         "uid": "${DS_CRATEDB}"
       },
       "gridPos": {
         "h": 4,
-        "w": 3,
-        "x": 7,
+        "w": 4,
+        "x": 6,
         "y": 4
       },
       "targets": [
@@ -201,8 +204,8 @@
     {
       "id": 13,
       "type": "stat",
-      "title": "Underreplicated shards",
-      "description": "Shards missing one or more replica copies (from sys.cluster_health). Above 0 means reduced redundancy — a YELLOW condition; recovery is usually automatic.",
+      "title": "Underreplicated",
+      "description": "Shards missing one or more replica copies (from sys.cluster_health). Above 0 means reduced redundancy \u2014 a YELLOW condition; recovery is usually automatic.",
       "datasource": {
         "type": "cratedb-cratedb-datasource",
         "uid": "${DS_CRATEDB}"
@@ -259,7 +262,7 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 3,
+        "w": 4,
         "x": 14,
         "y": 4
       },
@@ -313,8 +316,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 4,
-        "x": 17,
+        "w": 3,
+        "x": 18,
         "y": 4
       },
       "targets": [
@@ -345,7 +348,7 @@
     {
       "id": 16,
       "type": "stat",
-      "title": "Total documents",
+      "title": "Documents",
       "description": "Row count across all tables, counting primary shards only (replicas would double-count). From sys.shards.",
       "datasource": {
         "type": "cratedb-cratedb-datasource",
@@ -451,7 +454,7 @@
       "id": 22,
       "type": "table",
       "title": "Unassigned shard explanations",
-      "description": "Why any currently-unassigned shard can't be placed, from sys.allocations. Empty on a healthy cluster — that's the point.",
+      "description": "Why any currently-unassigned shard can't be placed, from sys.allocations. Empty on a healthy cluster \u2014 that's the point.",
       "datasource": {
         "type": "cratedb-cratedb-datasource",
         "uid": "${DS_CRATEDB}"
@@ -722,7 +725,7 @@
       "id": 35,
       "type": "table",
       "title": "Thread pool rejections",
-      "description": "Per-node totals across all thread pools, from sys.nodes. rejected > 0 means the cluster shed work because a pool's queue was full — a saturation signal; queued is work waiting to run.",
+      "description": "Per-node totals across all thread pools, from sys.nodes. rejected > 0 means the cluster shed work because a pool's queue was full \u2014 a saturation signal; queued is work waiting to run.",
       "datasource": {
         "type": "cratedb-cratedb-datasource",
         "uid": "${DS_CRATEDB}"
@@ -873,8 +876,8 @@
         "uid": "${DS_CRATEDB}"
       },
       "gridPos": {
-        "h": 9,
-        "w": 12,
+        "h": 7,
+        "w": 24,
         "x": 0,
         "y": 36
       },
@@ -899,6 +902,30 @@
                 "value": "ms"
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "started"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "running_ms"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
           }
         ]
       }
@@ -913,9 +940,9 @@
       },
       "gridPos": {
         "h": 9,
-        "w": 12,
-        "x": 12,
-        "y": 36
+        "w": 24,
+        "x": 0,
+        "y": 43
       },
       "targets": [
         {
@@ -938,6 +965,30 @@
                 "value": "ms"
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "started"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "duration_ms"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
           }
         ]
       }
@@ -951,7 +1002,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 45
+        "y": 52
       },
       "panels": []
     },
@@ -968,7 +1019,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 46
+        "y": 53
       },
       "targets": [
         {

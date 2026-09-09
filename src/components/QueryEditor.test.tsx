@@ -105,26 +105,15 @@ describe('QueryEditor format selection', () => {
     expect(screen.getByRole('radio', { name: 'Auto' })).not.toBeChecked();
   });
 
-  it('shows what Auto resolves to next to the picker', () => {
-    const props = makeProps({
-      rawSql: 'SELECT ts AS time, v FROM t',
-      selectedFormat: QueryFormat.Auto,
-      format: QueryFormat.Timeseries,
-    });
+  it.each([
+    ['SELECT ts AS time, v FROM t', 'Time series'],
+    ['SELECT * FROM t', 'Table'],
+    ['SELECT ts AS time, msg AS body FROM t', 'Logs'],
+  ])('shows what Auto resolves to next to the picker for %s', (rawSql, label) => {
+    const props = makeProps({ rawSql, selectedFormat: QueryFormat.Auto, format: QueryFormat.Table });
     render(<QueryEditor {...props} />);
 
-    expect(screen.getByTestId('resolved-format')).toHaveTextContent('Time series');
-  });
-
-  it('resolved-format indicator follows the SQL', () => {
-    const props = makeProps({
-      rawSql: 'SELECT * FROM t',
-      selectedFormat: QueryFormat.Auto,
-      format: QueryFormat.Table,
-    });
-    render(<QueryEditor {...props} />);
-
-    expect(screen.getByTestId('resolved-format')).toHaveTextContent('Table');
+    expect(screen.getByTestId('resolved-format')).toHaveTextContent(label);
   });
 
   it('hides the resolved-format indicator for explicit formats', () => {

@@ -1,4 +1,5 @@
 # Dev-stack datasource pointing at the compose cratedb service.
+# Every configurable key is listed in docs/provisioning.md.
 apiVersion: 1
 
 datasources:

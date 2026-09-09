@@ -20,7 +20,10 @@
         "label": "CrateDB datasource",
         "type": "datasource",
         "query": "cratedb-cratedb-datasource",
-        "current": {},
+        "current": {
+          "text": "default",
+          "value": "default"
+        },
         "hide": 0,
         "refresh": 1
       },
@@ -35,7 +38,14 @@
         "query": "SELECT DISTINCT location FROM doc.demo_metrics ORDER BY 1",
         "multi": true,
         "includeAll": true,
-        "current": {},
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
         "refresh": 1
       }
     ]
@@ -46,14 +56,14 @@
       "type": "text",
       "title": "",
       "gridPos": {
-        "h": 6,
+        "h": 5,
         "w": 24,
         "x": 0,
         "y": 0
       },
       "options": {
         "mode": "markdown",
-        "content": "## CrateDB Getting Started\n\nWhat you're looking at: temperature, humidity, and ingest logs for three demo locations, plus event markers \u2014 a worked example of the query pattern this plugin encourages. Each chart aggregates server-side (`$__timeGroupAlias` + `$__timeFilter`) so the result set scales with panel width, not table size; *Latest raw readings* shows the underlying rows, including an expandable OBJECT `tags` column.\n\nThese panels run on the seeded `doc.demo_*` tables (`make seed` in the dev stack). **Point the queries at your own data to make it yours** \u2014 the editor's cheat sheet (book icon) documents every macro."
+        "content": "## CrateDB Getting Started\n\nWhat you're looking at: temperature, humidity, and ingest logs for three demo locations, plus event markers \u2014 a worked example of the query pattern this plugin encourages. Each chart aggregates server-side (`$__timeGroupAlias` + `$__timeFilter`) so the result set scales with panel width, not table size; *Latest raw readings* shows the underlying rows, including an OBJECT `tags` column the table can inspect cell by cell.\n\nThese panels run on the seeded `doc.demo_*` tables (`make seed` in the dev stack). **Point the queries at your own data to make it yours** \u2014 the editor's cheat sheet (book icon) documents every macro."
       }
     },
     {
@@ -66,7 +76,7 @@
       },
       "gridPos": {
         "h": 9,
-        "w": 18,
+        "w": 12,
         "x": 0,
         "y": 5
       },
@@ -85,36 +95,6 @@
       }
     },
     {
-      "id": 3,
-      "type": "stat",
-      "title": "Rows in demo table",
-      "description": "Total rows in doc.demo_metrics \u2014 the charts above bucket these down to a few points per series.",
-      "datasource": {
-        "type": "cratedb-cratedb-datasource",
-        "uid": "${DS_CRATEDB}"
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 6,
-        "x": 18,
-        "y": 5
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "format": 1,
-          "rawSql": "SELECT count(*) AS rows FROM doc.demo_metrics"
-        }
-      ],
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      }
-    },
-    {
       "id": 4,
       "type": "timeseries",
       "title": "Humidity by location",
@@ -124,9 +104,9 @@
       },
       "gridPos": {
         "h": 9,
-        "w": 18,
-        "x": 0,
-        "y": 14
+        "w": 12,
+        "x": 12,
+        "y": 5
       },
       "targets": [
         {
@@ -151,7 +131,51 @@
         "uid": "${DS_CRATEDB}"
       },
       "gridPos": {
-        "h": 9,
+        "h": 8,
+        "w": 18,
+        "x": 0,
+        "y": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT ts, location, temperature, humidity, tags\nFROM doc.demo_metrics\nWHERE $__timeFilter(\"ts\")\n  AND $__conditionalAll(location IN ($location), $location)\nORDER BY ts DESC\nLIMIT 25"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "tags"
+            },
+            "properties": [
+              {
+                "id": "custom.inspect",
+                "value": true
+              },
+              {
+                "id": "custom.width",
+                "value": 260
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Demo table rows",
+      "description": "Total rows in doc.demo_metrics \u2014 the charts above bucket these down to a few points per series.",
+      "datasource": {
+        "type": "cratedb-cratedb-datasource",
+        "uid": "${DS_CRATEDB}"
+      },
+      "gridPos": {
+        "h": 8,
         "w": 6,
         "x": 18,
         "y": 14
@@ -160,9 +184,25 @@
         {
           "refId": "A",
           "format": 1,
-          "rawSql": "SELECT ts, location, temperature, humidity, tags FROM doc.demo_metrics WHERE $__timeFilter(\"ts\") ORDER BY ts DESC LIMIT 25"
+          "rawSql": "SELECT count(*) AS rows FROM doc.demo_metrics"
         }
-      ]
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      }
     },
     {
       "id": 6,
@@ -177,7 +217,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 23
+        "y": 22
       },
       "options": {
         "showTime": true,

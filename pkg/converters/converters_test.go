@@ -2,6 +2,7 @@ package converters
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 	"time"
 
@@ -19,6 +20,78 @@ func converterByName(t *testing.T, name string) func(in interface{}) (interface{
 	}
 	t.Fatalf("no converter registered for %s", name)
 	return nil
+}
+
+// representativeValues holds one scanned value per registered CrateDB type.
+var representativeValues = map[string]interface{}{
+	"BOOL": true,
+
+	"INT2": int16(-7),
+	"INT4": int32(70000),
+	// beyond 2^53, where a float64 round-trip would lose the last digit
+	"INT8": int64(9007199254740993),
+
+	"FLOAT4":  float32(1.5),
+	"FLOAT8":  float64(1.5),
+	"NUMERIC": float64(12345.6789),
+
+	"VARCHAR": "varchar",
+	"TEXT":    "text",
+	"NAME":    "name",
+	"CHAR":    "c",
+
+	"TIMESTAMP":   time.Date(2026, 7, 3, 12, 30, 0, 0, time.UTC),
+	"TIMESTAMPTZ": time.Date(2026, 7, 3, 12, 30, 0, 0, time.UTC),
+
+	"JSON": `{"source":"unit","n":1}`,
+
+	"_BOOL":    "{t,f}",
+	"_INT2":    "{1,2}",
+	"_INT4":    "{1,2}",
+	"_INT8":    "{1,2}",
+	"_FLOAT4":  "{1.5,2.5}",
+	"_FLOAT8":  "{1.5,2.5}",
+	"_VARCHAR": `{"a","b"}`,
+	"_TEXT":    `{"a","b"}`,
+}
+
+func TestEveryConverterFillsItsDeclaredFieldType(t *testing.T) {
+	require.Len(t, representativeValues, len(CrateDBConverters))
+
+	for _, c := range CrateDBConverters {
+		t.Run(c.Name, func(t *testing.T) {
+			value, ok := representativeValues[c.Name]
+			require.True(t, ok, "no representative value registered")
+			require.Equal(t, c.InputScanType, reflect.PointerTo(reflect.PointerTo(reflect.TypeOf(value))),
+				"the representative value must match the declared scan type")
+
+			field := data.NewFieldFromFieldType(c.FrameConverter.FieldType, 0)
+
+			// pgx scans into **T: the outer pointer always exists, the inner one is
+			// nil for a NULL
+			scanned := reflect.New(reflect.TypeOf(value))
+			scanned.Elem().Set(reflect.ValueOf(value))
+			held := reflect.New(scanned.Type())
+			held.Elem().Set(scanned)
+
+			out, err := c.FrameConverter.ConverterFunc(held.Interface())
+			require.NoError(t, err)
+			field.Append(out)
+
+			out, err = c.FrameConverter.ConverterFunc(reflect.New(scanned.Type()).Interface())
+			require.NoError(t, err)
+			field.Append(out)
+
+			require.Equal(t, 2, field.Len())
+			if field.Nullable() {
+				got, ok := field.ConcreteAt(0)
+				require.True(t, ok)
+				assert.Equal(t, value, got)
+				_, ok = field.ConcreteAt(1)
+				assert.False(t, ok, "a NULL must not produce a value")
+			}
+		})
+	}
 }
 
 func TestConverterRegistry(t *testing.T) {

@@ -11,13 +11,11 @@ export enum QueryFormat {
 }
 
 // how a target is edited: raw SQL in Monaco, or the visual builder. Unset means
-// SQL — targets saved before the builder existed carry no editorType.
+// SQL — provisioned dashboard JSON carries a bare {rawSql} with no editorType.
 export enum EditorType {
   SQL = 'sql',
   Builder = 'builder',
 }
-
-// ---- visual-builder query model -------------------------------------------
 
 export enum BuilderMode {
   Simple = 'simple',
@@ -114,8 +112,6 @@ export interface BuilderOptions {
   orderBy: OrderBy[];
   limit?: number;
 }
-
-// ---------------------------------------------------------------------------
 
 interface CrateDBQueryBase extends DataQuery {
   rawSql: string;

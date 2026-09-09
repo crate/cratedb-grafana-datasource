@@ -1,6 +1,7 @@
 import { expect, test } from '@grafana/plugin-e2e';
 
 import { CrateDBOptions, CrateDBSecureOptions } from '../../src/types';
+import { pickComboboxOption } from './helpers';
 
 test('config editor renders and health check succeeds against the dev stack', { tag: '@critical' }, async ({
   gotoDataSourceConfigPage,
@@ -31,22 +32,20 @@ test('TLS/SSL method toggles between file paths and certificate content', async 
 
   // accessible names include the field descriptions; Playwright matches substrings
   const tlsMode = page.getByRole('combobox', { name: 'TLS/SSL Mode' });
-  await tlsMode.click();
-  await tlsMode.fill('require');
-  await page.getByRole('option', { name: 'require' }).click();
+  await pickComboboxOption(page, tlsMode, 'require');
 
   // certificate-content is the default method: textareas, no path inputs
   await expect(page.getByText('TLS/SSL Auth Details')).toBeVisible();
   await expect(page.locator('input[name="tlsCACertFile"]')).toBeHidden();
 
+  // Keyboard selection rather than clicking the option: the option list
+  // re-renders as it filters, and a click can wait for it to settle forever.
   const tlsMethod = page.getByRole('combobox', { name: 'TLS/SSL Method' });
-  await tlsMethod.click();
-  await page.getByRole('option', { name: 'File system path' }).click();
+  await pickComboboxOption(page, tlsMethod, 'File system path');
   await expect(page.locator('input[name="tlsCACertFile"]')).toBeVisible();
   await expect(page.locator('input[name="tlsClientKeyFile"]')).toBeVisible();
 
-  await tlsMethod.click();
-  await page.getByRole('option', { name: 'Certificate content' }).click();
+  await pickComboboxOption(page, tlsMethod, 'Certificate content');
   await expect(page.locator('input[name="tlsCACertFile"]')).toBeHidden();
 });
 

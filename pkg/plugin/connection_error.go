@@ -1,9 +1,5 @@
 package plugin
 
-// Connection error classification: raw pgx/network errors are precise but unhelpful
-// on the config page. ClassifyError prefixes the category and likely fix;
-// MutateQueryError tags the source so Grafana attributes downstream failures right.
-
 import (
 	"context"
 	"crypto/tls"
@@ -12,9 +8,11 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgproto3"
 )
 
 // SQLSTATE values from CrateDB's wire protocol: a two-char class prefix for
@@ -23,6 +21,9 @@ const (
 	pgClassAuth            = "28" // invalid_authorization_specification, invalid_password
 	pgCodeInsufficientPriv = "42501"
 )
+
+// pgx's wording when the server answers an SSLRequest with a refusal.
+const tlsRefusedByServer = "server refused TLS connection"
 
 // ClassifyError wraps err with an actionable, category-prefixed message.
 func ClassifyError(err error) error {
@@ -52,6 +53,19 @@ func ClassifyError(err error) error {
 		return fmt.Errorf("TLS hostname verification failed: the certificate does not match the server address; check the address or use TLS mode 'verify-ca': %w", err)
 	case errors.As(err, &tlsRecord):
 		return fmt.Errorf("TLS handshake failed: the server does not appear to speak TLS on this port; check that SSL is enabled on CrateDB or set TLS mode 'disable': %w", err)
+	}
+
+	// A server that answers the startup packet with something other than a
+	// Postgres message: the HTTP endpoint on 4200 is the usual one.
+	var maxBodyLen *pgproto3.ExceededMaxBodyLenErr
+	if errors.As(err, &maxBodyLen) {
+		return fmt.Errorf("the server at this address does not speak the PostgreSQL wire protocol; CrateDB serves it on port 5432, while 4200 is the HTTP endpoint: %w", err)
+	}
+
+	// pgx reports a declined SSLRequest as a bare error value, so the text is
+	// the only thing to match on.
+	if strings.Contains(err.Error(), tlsRefusedByServer) {
+		return fmt.Errorf("the server refused TLS: CrateDB accepts plaintext connections unless ssl.psql.enabled is set on the cluster; enable it there or set TLS mode 'disable': %w", err)
 	}
 
 	var dnsErr *net.DNSError

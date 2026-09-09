@@ -1,6 +1,6 @@
 import { expect, test } from '@grafana/plugin-e2e';
 
-import { waitForMonaco } from './helpers';
+import { scrollDashboardToBottom, waitForMonaco } from './helpers';
 
 test('new queries open in the builder; the SQL editor is one switch away', { tag: '@critical' }, async ({ panelEditPage, page }) => {
   await panelEditPage.datasource.set('CrateDB');
@@ -29,7 +29,7 @@ test('new queries open in the builder; the SQL editor is one switch away', { tag
 test('the seeded getting-started dashboard returns data', async ({ gotoDashboardPage }) => {
   const dashboardPage = await gotoDashboardPage({ uid: 'cratedb-getting-started' });
 
-  const stat = dashboardPage.getPanelByTitle('Rows in demo table');
+  const stat = dashboardPage.getPanelByTitle('Demo table rows');
   await expect(stat.locator).toBeVisible();
   await expect(stat.locator).toContainText(/\d/);
 
@@ -40,13 +40,15 @@ test('the seeded getting-started dashboard returns data', async ({ gotoDashboard
 
 // The Logs query format end to end: the dashboard's logs panel runs the cheat
 // sheet's logs template verbatim against the seeded doc.demo_logs table.
-test('the seeded logs panel renders log lines', async ({ gotoDashboardPage }) => {
+test('the seeded logs panel renders log lines', async ({ gotoDashboardPage, page }) => {
   const dashboardPage = await gotoDashboardPage({ uid: 'cratedb-getting-started' });
 
+  // the panel sits below the fold and Grafana renders a panel only once it
+  // scrolls into view, so reach it before asserting anything about it
+  await scrollDashboardToBottom(page);
   const logs = dashboardPage.getPanelByTitle('Demo logs (Logs format)');
-  await expect(logs.locator).toBeVisible();
-  // the panel sits below the fold and Grafana lazy-renders offscreen panels
   await logs.locator.scrollIntoViewIfNeeded();
+  await expect(logs.locator).toBeVisible();
   // seeded messages always name a sensor
   await expect(logs.locator).toContainText(/berlin-01|vienna-01|zurich-01/);
   await expect(logs.getErrorIcon()).not.toBeVisible();

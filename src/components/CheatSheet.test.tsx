@@ -28,7 +28,11 @@ describe('CheatSheet template buttons', () => {
     await userEvent.click(screen.getByRole('button', { name: /recommended template/i }));
 
     expect(onClickExample).toHaveBeenCalledWith(
-      expect.objectContaining({ rawSql: TIMESERIES_QUERY_TEMPLATE, format: QueryFormat.Timeseries })
+      expect.objectContaining({
+        rawSql: TIMESERIES_QUERY_TEMPLATE,
+        format: QueryFormat.Timeseries,
+        selectedFormat: QueryFormat.Timeseries,
+      })
     );
   });
 
@@ -38,7 +42,11 @@ describe('CheatSheet template buttons', () => {
     await userEvent.click(screen.getByRole('button', { name: /logs template/i }));
 
     expect(onClickExample).toHaveBeenCalledWith(
-      expect.objectContaining({ rawSql: LOGS_QUERY_TEMPLATE, format: QueryFormat.Logs })
+      expect.objectContaining({
+        rawSql: LOGS_QUERY_TEMPLATE,
+        format: QueryFormat.Logs,
+        selectedFormat: QueryFormat.Logs,
+      })
     );
   });
 });
@@ -62,5 +70,12 @@ describe('CheatSheet reference content', () => {
     // EXPLAIN guidance and the sys-schema monitoring note are the CrateDB-specific hooks
     expect(screen.getAllByText(/EXPLAIN/).length).toBeGreaterThan(0);
     expect(screen.getByText(/sys\.jobs_log/)).toBeInTheDocument();
+  });
+
+  it('documents which table each template button loads', () => {
+    renderSheet();
+
+    expect(screen.getByText(/doc\.demo_metrics/)).toBeInTheDocument();
+    expect(screen.getByText(/doc\.demo_logs/)).toBeInTheDocument();
   });
 });

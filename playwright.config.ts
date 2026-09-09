@@ -33,16 +33,40 @@ export default defineConfig<PluginOptions>({
       },
       dependencies: ['auth'],
     },
-    // Catalog screenshots, run on demand by `make screenshots` — not part of
-    // the smoke suite.
-    {
-      name: 'screenshots',
-      testDir: './tests/screenshots',
-      use: {
-        ...devices['Desktop Chrome'],
-        storageState: 'playwright/.auth/admin.json',
-      },
-      dependencies: ['auth'],
-    },
+    // Catalog screenshots, run on demand by `make screenshots`. Gated the same
+    // way as the QA project: the capture writes into src/img/, which an
+    // unqualified `playwright test` has no business doing.
+    ...(process.env.SCREENSHOTS === '1'
+      ? [
+          {
+            name: 'screenshots',
+            testDir: './tests/screenshots',
+            use: {
+              ...devices['Desktop Chrome'],
+              storageState: 'playwright/.auth/admin.json',
+            },
+            dependencies: ['auth'],
+          },
+        ]
+      : []),
+    // Manual-QA sweep (`make qa`): a long walk over every surface in a real
+    // Chrome, writing reviewable screenshots to qa-artifacts/. Gated on QA=1 so
+    // an unqualified `playwright test` — what CI runs — never picks it up.
+    ...(process.env.QA === '1'
+      ? [
+          {
+            name: 'qa',
+            testDir: './tests/qa',
+            timeout: 300_000,
+            use: {
+              ...devices['Desktop Chrome'],
+              channel: 'chrome',
+              viewport: { width: 1440, height: 900 },
+              storageState: 'playwright/.auth/admin.json',
+            },
+            dependencies: ['auth'],
+          },
+        ]
+      : []),
   ],
 });

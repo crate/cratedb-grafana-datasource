@@ -23,6 +23,7 @@ attributions in `NOTICE` intact when you touch code adapted from them.
 | Driver tests vs real CrateDB (testcontainers) | `make test-integration` |
 | Deployed-plugin tests (CrateDB + Grafana) | `make e2e` |
 | Browser smoke tests (Playwright) | `make e2e-browser` |
+| Pre-release walk of every surface, screenshots to review | `make qa` |
 | Dev stack up / seed demo data | `make up` / `make seed` |
 | Package + run the catalog validator | `make validate` |
 
@@ -48,9 +49,9 @@ is missing, so you rarely install them yourself. See `CONTRIBUTING.md` for dev-e
 
 ## What lands in the code
 
-Everything left in the tree — comments, names, docstrings, test titles — must read as if the code
-had always been written that way. Document what the code **is** and the constraints it honors, never
-the edit that produced it or the problem a session just solved.
+Everything left in the tree, including comments, names, docstrings and test titles, must read as
+if the code had always been written that way. Document what the code **is** and the constraints it
+honors, never the edit that produced it or the problem a session just solved.
 
 - **No change-narration.** Drop "now / before / previously", "X before Y so the old case can't
   happen", and any wording pitched at a reviewer of the diff. Litmus: if a line only makes sense to

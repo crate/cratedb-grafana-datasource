@@ -25,7 +25,7 @@ export function TimeSeriesQueryBuilder({ columns, options, onChange }: Props) {
   return (
     <>
       <EditorRow>
-        <EditorField label="Time column" tooltip="Buckets the series ($__timeGroup) and bounds it to the dashboard range ($__timeFilter)">
+        <EditorField label="Time column" tooltip="Buckets the series ($__timeGroupAlias) and bounds it to the dashboard range ($__timeFilter)">
           <ColumnSelect
             columns={columns}
             kinds={['time']}

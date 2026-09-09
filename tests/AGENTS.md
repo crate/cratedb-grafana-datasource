@@ -8,8 +8,24 @@ This plugin has **two** e2e tiers. Don't confuse them:
   real CrateDB via testcontainers. Run with `make e2e`. Not covered here.
 
 `tests/screenshots/` is a third Playwright project, not a test tier: it drives the same stack to
-regenerate the catalog images in `src/img/screenshots/`. It runs only from `make screenshots`, and
-the `chromium` project is pinned to `tests/smoke` so the smoke run never picks it up.
+regenerate the catalog images in `src/img/screenshots/`. `SCREENSHOTS=1` admits it, which only
+`make screenshots` sets — a capture writes into `src/img/`, so no unqualified run should schedule
+it.
+
+`tests/qa/` is a fourth project, `make qa`: a slower walk over every user-facing surface in a real
+Chrome, written to be read as much as run. It asserts what can be asserted (no panel errors, no
+console or HTTP failures the plugin caused, health-check messages that name the actual problem) and
+leaves a screenshot per step under `qa-artifacts/` for a person to look through before a release.
+`QA=1` is what admits the project into the Playwright run, so CI — which runs `playwright test`
+unqualified — never schedules it.
+
+Three things bite in that suite. Grafana renders a panel only once it scrolls into view, so a
+screenshot or an error check taken without scrolling reports blank space for everything below the
+fold; `renderWholePage` in `tests/qa/qa.ts` handles it. The bundled dashboards bind their
+datasource variable to the org default, so a spec that runs while some other datasource of this type
+exists must pin `var-DS_CRATEDB` in the URL. And on Grafana 12.x a combobox's highlighted option
+lags a render behind its filtered list while a radio input takes no click at all, so both are
+driven through the helpers rather than directly.
 
 ## Running the browser tests
 

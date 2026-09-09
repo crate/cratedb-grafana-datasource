@@ -32,8 +32,9 @@ Pick a table and the visual query builder completes the time-series query CrateD
   same way panels do.
 - **Cluster monitoring with no exporter.** The bundled *CrateDB Cluster Health* dashboard reads
   `sys.nodes`, `sys.shards` and `sys.jobs_log` directly.
-- **CrateDB types, modeled.** `OBJECT` columns surface as structured, expandable JSON; arrays,
-  `GEO` and `FLOAT_VECTOR` come through in their CrateDB text form rather than as errors.
+- **CrateDB types, modeled.** `OBJECT` columns surface as structured JSON a table panel can
+  inspect cell by cell; arrays, `GEO` and `FLOAT_VECTOR` come through in their CrateDB text form
+  rather than as errors.
 - **Template variables and ad-hoc filters.** Variable queries get the full SQL editor;
   dashboard-wide filters offer only columns that can back a valid CrateDB predicate.
 - **Diagnostics that name the fix.** Authentication, TLS, network and timeout failures come back
@@ -56,20 +57,75 @@ column, a logs panel and annotations.
 - **Grafana 12.3 or later.** The frontend uses the host's React through the shared
   `react/jsx-runtime` external (React 18 on Grafana 12.x, 19 on 13.x) rather than bundling its own;
   12.3 is the first version to provide it.
-- **Any CrateDB version.** The plugin introspects `information_schema` directly and speaks the
-  PostgreSQL wire protocol, so it has no `parse_ident()` dependency and no version floor. (The
-  `>= 6.3` floor applies only to Grafana's built-in PostgreSQL data source, whose query builder
-  needs `parse_ident()`.)
+- **CrateDB 4.7 or later**, with 6.3 and later covered by CI. `$__timeGroup` expands to `DATE_BIN`,
+  which CrateDB added in 4.7; on an older cluster, bucket by hand with
+  `FLOOR(EXTRACT(EPOCH FROM ts)/N)*N`, which yields epoch seconds rather than a timestamp. Nothing
+  else in the plugin sets a floor: introspection reads `information_schema` directly. (Grafana's
+  built-in PostgreSQL data source needs `parse_ident()` and therefore CrateDB 6.3 or later; this
+  plugin does not.)
+
+## Installation
+
+The plugin is not yet listed in the Grafana plugin catalog, so it installs from a release archive
+and Grafana has to be told to load it unsigned. That works on **self-hosted Grafana (OSS or
+Enterprise)**; **Grafana Cloud does not run unsigned plugins**, and offers no override.
+
+<details>
+<summary><b>Install on self-hosted Grafana</b></summary>
+
+1. Download the archive from [Releases](https://github.com/crate/cratedb-grafana-datasource/releases)
+   and extract it into Grafana's plugin directory (default `/var/lib/grafana/plugins`).
+
+2. Allow the plugin id — in `grafana.ini`:
+
+   ```ini
+   [plugins]
+   allow_loading_unsigned_plugins = cratedb-cratedb-datasource
+   ```
+
+   or, for the Docker image:
+
+   ```
+   GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=cratedb-cratedb-datasource
+   ```
+
+3. Restart Grafana.
+
+The plugin page carries an *unsigned* badge, and updates do not arrive through the Grafana UI —
+watch this repository's releases. Grafana's
+[plugin signatures](https://grafana.com/docs/grafana/latest/administration/plugin-management/plugin-sign/)
+documentation covers the mechanics.
+
+</details>
+
+<details>
+<summary><b>Why unsigned, and what about Grafana Cloud?</b></summary>
+
+Grafana's [plugin policy](https://grafana.com/legal/plugins/) places a plugin offered by a
+for-profit business at the *Commercial* signature level, which requires a paid Commercial Plugin
+Subscription with Grafana Labs. That isn't in place yet. Until it is, there are no signed builds,
+and so no Grafana Cloud support either.
+
+[Private signing](https://grafana.com/developers/plugin-tools/publish-a-plugin/sign-a-plugin) is
+tied to a single instance's `root_url` and accepts no wildcards, so no build can be pre-signed for
+everyone. Where a security policy demands a signature, sign the plugin against your own instance
+with a free Grafana Cloud token.
+
+If Grafana Cloud support matters to you, say so in an
+[issue](https://github.com/crate/cratedb-grafana-datasource/issues) — demand is what would justify
+a signed, catalog-listed release.
+
+</details>
 
 ## Getting started
 
-**1. Install the plugin** and restart Grafana.
+**1. [Install the plugin](#installation)** and restart Grafana.
 
 **2. Add the data source** at *Connections → Data sources → Add data source → CrateDB*.
 
 | Option | Default | Notes |
 |---|---|---|
-| Host URL | — | CrateDB node or load balancer as `host:port`. Use the **PostgreSQL wire port, usually 5432** — not the HTTP port 4200 |
+| Host URL | — | CrateDB node or load balancer as `host:port`. Use the **PostgreSQL wire port, usually 5432**; the HTTP port 4200 speaks a different protocol |
 | Default schema | `doc` | Applied as `search_path`. `doc` is where CrateDB puts tables created without a schema, but tables can live anywhere |
 | Username | `crate` | |
 | Password | empty | Optional — CrateDB's Docker default is trust authentication |
@@ -104,8 +160,8 @@ The result format follows the builder flavor you pick. In the SQL editor it defa
 a time series when the first column is aliased `time` (or uses `$__timeGroupAlias`) and more
 columns follow, a table otherwise. Override with *Time series*, *Table* or *Logs* at any time.
 
-**4. Browse logs** in Explore with the builder's *Logs* flavor — time, message and severity column
-pickers — or in SQL by aliasing columns to `time`, `body` and optionally `level`.
+**4. Browse logs** in Explore with the builder's *Logs* flavor, which offers time, message and
+severity column pickers, or in SQL by aliasing columns to `time`, `body` and optionally `level`.
 
 **5. Open the bundled dashboards.** *CrateDB Cluster Health* and *CrateDB Getting Started* ship
 with the plugin and appear under the data source's *Dashboards* tab.
@@ -118,10 +174,18 @@ To see all of it running against seeded demo data without installing anything bu
 - [Macros](https://github.com/crate/cratedb-grafana-datasource/blob/main/docs/macros.md) — the full
   set, what each expands to, and the query templates
 - [Template variables and ad-hoc filters](https://github.com/crate/cratedb-grafana-datasource/blob/main/docs/variables.md)
+- [Annotations](https://github.com/crate/cratedb-grafana-datasource/blob/main/docs/annotations.md) —
+  the columns an annotation query has to return
+- [Provisioning](https://github.com/crate/cratedb-grafana-datasource/blob/main/docs/provisioning.md) —
+  configuring the data source from a YAML file
 - [Why this plugin and not the PostgreSQL data source?](https://github.com/crate/cratedb-grafana-datasource/blob/main/docs/why-not-postgresql.md)
+- [Roadmap](https://github.com/crate/cratedb-grafana-datasource/blob/main/ROADMAP.md) — what 0.2 is
+  planned to bring, and why each item is not here yet
 - [CrateDB documentation](https://cratedb.com/docs)
 - [Development](https://github.com/crate/cratedb-grafana-datasource/blob/main/DEVELOPMENT.md) —
   building, the test tiers, the dev stack, CI
+- [Architecture](https://github.com/crate/cratedb-grafana-datasource/blob/main/docs/architecture.md) —
+  how the plugin is put together and how it is verified
 
 ## Contributing
 

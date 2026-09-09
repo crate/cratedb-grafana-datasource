@@ -28,7 +28,7 @@
     }
   ],
   "info": {
-    "description": "Query and visualize CrateDB data: SQL editor with autocomplete and time-series macros, alerting, logs, template variables, ad-hoc filters, and bundled monitoring dashboards",
+    "description": "Query and visualize CrateDB data: visual query builder and SQL editor with autocomplete, CrateDB time-series macros, alerting, logs, template variables, ad-hoc filters, and bundled monitoring dashboards",
     "author": {
       "name": "Crate.io",
       "url": "https://cratedb.com"

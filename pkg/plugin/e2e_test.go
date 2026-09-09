@@ -11,8 +11,8 @@
 //     already-running compose stack:
 //     GRAFANA_URL=http://localhost:3000 go test -tags=e2e ./pkg/plugin/
 //
-// Not covered: alert-rule evaluation (the backend $__interval path it needs IS
-// covered below), the TLS matrix (needs an SSL CrateDB), and Monaco rendering
+// Not covered: alert-rule evaluation end to end (its backend $__interval path is
+// exercised below), the TLS matrix (needs an SSL CrateDB), and Monaco rendering
 // (see tests/smoke/).
 package plugin
 
@@ -38,6 +38,8 @@ import (
 const (
 	e2eDatasourceUID = "cratedb-dev" // provisioned by provisioning/datasources/cratedb.yaml
 	e2eFixture       = "doc.e2e_probe"
+	// keep in step with the GRAFANA_VERSION default in docker-compose.yaml
+	defaultGrafanaVersion = "13.2.1"
 )
 
 type e2eEnv struct {
@@ -49,7 +51,31 @@ func grafanaImage() string {
 	if img := os.Getenv("GRAFANA_IMAGE"); img != "" {
 		return img
 	}
-	return "grafana/grafana:latest"
+	version := os.Getenv("GRAFANA_VERSION")
+	if version == "" {
+		version = defaultGrafanaVersion
+	}
+	return "grafana/grafana:" + version
+}
+
+func TestGrafanaImage(t *testing.T) {
+	t.Run("pinned by default", func(t *testing.T) {
+		t.Setenv("GRAFANA_IMAGE", "")
+		t.Setenv("GRAFANA_VERSION", "")
+		assert.Equal(t, "grafana/grafana:"+defaultGrafanaVersion, grafanaImage())
+	})
+
+	t.Run("GRAFANA_VERSION selects the tag", func(t *testing.T) {
+		t.Setenv("GRAFANA_IMAGE", "")
+		t.Setenv("GRAFANA_VERSION", "12.0.0")
+		assert.Equal(t, "grafana/grafana:12.0.0", grafanaImage())
+	})
+
+	t.Run("GRAFANA_IMAGE wins", func(t *testing.T) {
+		t.Setenv("GRAFANA_IMAGE", "grafana/grafana-enterprise:12.0.0")
+		t.Setenv("GRAFANA_VERSION", "13.2.1")
+		assert.Equal(t, "grafana/grafana-enterprise:12.0.0", grafanaImage())
+	})
 }
 
 // setupEnv returns an attached environment when GRAFANA_URL is set, and

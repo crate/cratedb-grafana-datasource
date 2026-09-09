@@ -27,8 +27,10 @@ export function applyConditionalAll(rawQuery: string, templateVars: TypedVariabl
       const matchLength = macro.length + params[0].length + 1 + params[1].length + 1;
       rawQuery = rawQuery.slice(0, macroIndex) + phrase + rawQuery.slice(macroIndex + matchLength);
     }
-    // step strictly left of this occurrence so we terminate and skip any malformed macro left in place
-    macroIndex = rawQuery.lastIndexOf(macro, macroIndex - 1);
+    // step strictly left of this occurrence so we terminate and skip any malformed macro left in
+    // place; lastIndexOf clamps a negative start to 0, so an occurrence at offset 0 needs -1 to
+    // stop the scan rather than re-finding itself
+    macroIndex = macroIndex === 0 ? -1 : rawQuery.lastIndexOf(macro, macroIndex - 1);
   }
   return rawQuery;
 }

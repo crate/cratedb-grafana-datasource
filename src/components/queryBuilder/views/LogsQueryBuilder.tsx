@@ -49,6 +49,7 @@ export function LogsQueryBuilder({ columns, options, onChange }: Props) {
           <ColumnsEditor
             columns={columns}
             value={plain}
+            exclude={options.columns.filter((column) => column.hint).map((column) => column.column)}
             onChange={(picked) =>
               onChange({ ...options, columns: [...options.columns.filter((column) => column.hint), ...picked] })
             }

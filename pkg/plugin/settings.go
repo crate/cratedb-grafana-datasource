@@ -16,6 +16,10 @@ const (
 	DefaultSchema         = "doc"
 	DefaultQueryTimeout   = 60
 	DefaultSchemaCacheTTL = 60
+
+	DefaultMaxOpenConnections    = 100
+	DefaultMaxIdleConnections    = 100
+	DefaultMaxConnectionLifetime = 14400 // seconds
 )
 
 // Settings holds the datasource configuration as stored by Grafana.
@@ -80,7 +84,7 @@ func (settings *Settings) isValid() error {
 		return ErrInvalidUsername
 	}
 	switch settings.TLSMode {
-	case "", "disable", "require", "verify-ca", "verify-full":
+	case "disable", "require", "verify-ca", "verify-full":
 	default:
 		return fmt.Errorf("%w: %s", ErrInvalidTLSMode, settings.TLSMode)
 	}
@@ -96,7 +100,7 @@ func intOption(jsonData map[string]interface{}, key string, target *int64) error
 	}
 	switch v := raw.(type) {
 	case string:
-		parsed, err := strconv.ParseInt(v, 0, 64)
+		parsed, err := strconv.ParseInt(v, 10, 64)
 		if err != nil {
 			return fmt.Errorf("could not parse %s value: %w", key, err)
 		}
@@ -158,6 +162,19 @@ func LoadSettings(config backend.DataSourceInstanceSettings) (Settings, error) {
 		settings.DisableSchemaCache = v
 	}
 
+	if settings.TLSMode == "" {
+		settings.TLSMode = "disable"
+	}
+	if settings.MaxOpenConnections <= 0 {
+		settings.MaxOpenConnections = DefaultMaxOpenConnections
+	}
+	if settings.MaxIdleConnections <= 0 {
+		settings.MaxIdleConnections = DefaultMaxIdleConnections
+	}
+	if settings.MaxConnectionLifetime <= 0 {
+		settings.MaxConnectionLifetime = DefaultMaxConnectionLifetime
+	}
+
 	settings.Password = config.DecryptedSecureJSONData["password"]
 	settings.TLSCACert = config.DecryptedSecureJSONData["tlsCACert"]
 	settings.TLSClientCert = config.DecryptedSecureJSONData["tlsClientCert"]
@@ -167,13 +184,12 @@ func LoadSettings(config backend.DataSourceInstanceSettings) (Settings, error) {
 }
 
 // GenerateDSN builds a pgx keyword/value connection string. CrateDB ignores
-// dbname (schema is selected via search_path), but pgx requires one.
+// dbname (schema is selected via search_path), but pgx requires one. The password
+// is set on the parsed config instead: pgx echoes the connection string in parse
+// errors, and its redaction leaks the tail of a password holding a quote.
 func GenerateDSN(settings Settings) string {
 	dsn := fmt.Sprintf("host='%s' port=%d user='%s' dbname='crate' sslmode='%s'",
 		escape(settings.Server), settings.Port, escape(settings.Username), settings.TLSMode)
-	if settings.Password != "" {
-		dsn += fmt.Sprintf(" password='%s'", escape(settings.Password))
-	}
 	if settings.Timeout > 0 {
 		dsn += fmt.Sprintf(" connect_timeout=%d", settings.Timeout)
 	}
