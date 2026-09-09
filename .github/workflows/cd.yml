@@ -110,10 +110,22 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: grafana/plugin-actions/build-plugin@v1
+      # build-plugin takes plain version strings, so the toolchain comes from
+      # the same two files every other job reads.
+      - name: Resolve toolchain versions
+        id: toolchain
+        run: |
+          {
+            echo "node=$(tr -dc '0-9.' < .nvmrc)"
+            echo "go=$(awk '/^go /{print $2; exit}' go.mod)"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: grafana/plugin-actions/build-plugin@build-plugin/v1.2.0
         with:
           policy_token: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
           attestation: true
+          node-version: ${{ steps.toolchain.outputs.node }}
+          go-version: ${{ steps.toolchain.outputs.go }}
 
       # The same checks grafana.com runs on submission — malformed
       # plugin.json, zip structure, unsigned manifest.
