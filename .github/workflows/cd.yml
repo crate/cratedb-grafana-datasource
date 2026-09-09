@@ -110,6 +110,11 @@ jobs:
         with:
           persist-credentials: false
 
+      # build-plugin installs with whatever yarn is on the runner, which is
+      # yarn 1 and refuses a packageManager field. The setup action provisions
+      # yarn 4 through corepack in the node the action then reuses.
+      - uses: ./.github/actions/setup
+
       # build-plugin takes plain version strings, so the toolchain comes from
       # the same two files every other job reads.
       - name: Resolve toolchain versions
