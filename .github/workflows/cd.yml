@@ -125,7 +125,7 @@ jobs:
             echo "go=$(awk '/^go /{print $2; exit}' go.mod)"
           } >> "$GITHUB_OUTPUT"
 
-      - uses: grafana/plugin-actions/build-plugin@build-plugin/v1.2.0
+      - uses: grafana/plugin-actions/build-plugin@build-plugin/v1.2.1
         with:
           policy_token: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
           attestation: true
